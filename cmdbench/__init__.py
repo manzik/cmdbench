@@ -1,0 +1,1 @@
+from cmdbench.cmdbench import benchmark_command as benchmark_command
