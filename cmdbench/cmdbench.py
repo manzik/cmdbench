@@ -7,7 +7,7 @@ import subprocess
 import psutil
 import time
 import sys
-import uuid
+import tempfile
 
 # https://stackoverflow.com/a/5998359
 current_milli_time = lambda: int(round(time.time() * 1000))
@@ -35,9 +35,7 @@ def np_array_stats(np_arr):
 def benchmark_command(command):
     commands_list = command.split(" ")
 
-    # https://stackoverflow.com/a/17323913
-    filename_str = uuid.uuid4().hex.upper()[0:6]
-    time_tmp_output_file = filename_str + ".tmp"
+    time_tmp_output_file = tempfile.mkstemp(suffix = '.temp')[1] # [1] for getting filename and not the file's stream
 
     # Wrap the target command around the time command
     commands_list = ["/usr/bin/time", "-o", time_tmp_output_file, "-v"] + commands_list
