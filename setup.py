@@ -14,7 +14,7 @@ setup(
     version='0.1',
     # The license can be anything you like
     license='MIT',
-    description='Quick and easy benchmark for any command.',
+    description='Quick and easy benchmarking for any command\'s CPU, memory and disk usage.',
     # We will also need a readme eventually (there will be a warning)
     # long_description=open('README.txt').read(),
 )
