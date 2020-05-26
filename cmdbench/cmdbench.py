@@ -30,7 +30,13 @@ def benchmark_command_avg(command, times):
 
 Stats = namedtuple("Stats", "mean std")
 def np_array_stats(np_arr):
-    return Stats(np.mean(np_arr), np.std(np_arr))
+    mean = std = 0
+    
+    if(len(np_arr) > 0):
+        mean = np.mean(np_arr)
+        std = np.std(np_arr)
+    
+    return Stats(mean, std)
 
 def benchmark_command(command):
     commands_list = command.split(" ")
@@ -102,6 +108,10 @@ def benchmark_command(command):
                 memory_values.append(memory_usage)
                 memory_max = max(memory_max, memory_usage)
                 cpu_percentages.append(cpu_percentage)
+            except psutil.AccessDenied as access_denied_error:
+                print("Root access is needed for monitoring the target command.")
+                raise access_denied_error
+                break
             except Exception as e:
                 # The process might end while we are measuring resources
                 print(e)
