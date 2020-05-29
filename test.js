@@ -4,8 +4,8 @@ let child_process = require('child_process');
 let isChild = process.argv.indexOf("--ischild") > -1, childNum = isChild ? process.argv[3] : 0;
 console.log(isChild ? "Running child process #" + childNum : "Running master process");
 
-const CHILD_PROCESSES_COUNT = 8; // Number of times to run the same script as children
-const WAIT_MS = 1000;
+const CHILD_PROCESSES_COUNT = 4; // Number of times to run the same script as a child
+const WAIT_MS = 500;
 const ERROR_CHANCE = 0.0;
 const TEST_FILE_SIZE_KB = 1024;
 const LOOP_COUNT = 10000000;
