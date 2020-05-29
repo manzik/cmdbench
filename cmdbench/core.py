@@ -8,32 +8,13 @@ import subprocess
 import psutil
 import sys
 import tempfile
-
-# Get's an array of dictionaries and returns the averages for each (nested) property.
-# Each of array's dictionary values have to be of the same type among all array members
-def calculate_dict_stats(arr_dicts):
-    sample_dict = arr_dicts[0]
-    stats = {}
-    for key, value in sample_dict.items():
-        # values_list is values for that key across all dictionaries passed in the input list (arr_dicts)
-        values_list = list(map(lambda parent_dict: parent_dict[key], arr_dicts))
-        if(isinstance(value, dict)):
-            # Check inner values recursively
-            recursive_stats = calculate_dict_stats(values_list)
-            stats[key] = recursive_stats
-        elif(type(value) == int or type(value) == float):
-            # number_values_list is a list of that specific key among all done benchmarks for example
-            stats[key] = BenchmarkStats(values_list)
-        elif(type(value) == BenchmarkStats):
-            # Combine all the data from all these stats objects into one numpy array and
-            # recalculate the stats for it
-            data_values_list = np.concatenate(list(map(lambda stats_obj: stats_obj.data, values_list)))
-            stats[key] = BenchmarkStats(data_values_list)
-    return stats
+import shlex
 
 def benchmark_command(command, iterations_num = 1, debugging = False):
     if(iterations_num <= 0):
-        raise Exception("The number of times to run the command should be >= 1")
+        raise Exception("The number of iterations to run the command should be >= 1")
+    if(iterations_num <= 0):
+        raise Exception("The number of times to run the command per each iterations should be >= 1")
 
     raw_benchmark_results = []
     for _ in range(iterations_num):
@@ -42,7 +23,7 @@ def benchmark_command(command, iterations_num = 1, debugging = False):
     
     final_benchmark_results = list(map(raw_to_final_benchmark, raw_benchmark_results))
 
-    return BenchmarkData(final_benchmark_results)
+    return BenchmarkResults(final_benchmark_results)
 
 """
 def benchmark_command(command, times = 1, debugging = False):
@@ -97,30 +78,41 @@ def raw_to_final_benchmark(benchmark_raw_dict):
     benchmark_results = {
         "cpu":
         {
-            "user_time": benchmark_raw_dict["gnu_time_results"]["User time (seconds)"],
-            "system_time": benchmark_raw_dict["gnu_time_results"]["System time (seconds)"],
-            "total_time": benchmark_raw_dict["gnu_time_results"]["User time (seconds)"] + benchmark_raw_dict["gnu_time_results"]["System time (seconds)"],
+            "user_time": benchmark_raw_dict["gnu_time_results"]["User time (seconds)"], # TODO
+            "user_time_psutil": benchmark_raw_dict["cpu"]["user_time"], # TODO
+            "system_time": benchmark_raw_dict["gnu_time_results"]["System time (seconds)"], # TODO
+            "system_time_psutil": benchmark_raw_dict["cpu"]["system_time"], # TODO
+            "total_time": benchmark_raw_dict["gnu_time_results"]["User time (seconds)"] + benchmark_raw_dict["gnu_time_results"]["System time (seconds)"], # TODO
+            "total_time_psutil": benchmark_raw_dict["cpu"]["user_time"] + benchmark_raw_dict["cpu"]["system_time"], # TODO
+            "utilization_percentage": benchmark_raw_dict["gnu_time_results"]["Percent of CPU this job got"]
         },
         "memory": 
         {
-            "max": benchmark_raw_dict["memory"]["max"],
-            "max_perprocess": benchmark_raw_dict["memory"]["max_perprocess"]
+            "max": benchmark_raw_dict["memory"]["max"], # DONE
+            "max_perprocess": benchmark_raw_dict["memory"]["max_perprocess"], # DONE
+            "max_perprocess_psutil": benchmark_raw_dict["gnu_time_results"]["Maximum resident set size (kbytes)"] * 1024 # DONE
         },
         "disk": 
         {
-            "io_counters": None
+            "io_counters": 
+            {
+                "total": 0, # TODO
+                "read": 0, # TODO
+                "write": 0 # TODO
+            }
         },
         "process":
         {
-            "stdout_data": benchmark_raw_dict["process"]["stdout_data"],
-            "stderr_data": benchmark_raw_dict["process"]["stderr_data"],
-            "execution_time": benchmark_raw_dict["gnu_time_results"]["Elapsed (wall clock) time (h:mm:ss or m:ss)"]
+            "stdout_data": benchmark_raw_dict["process"]["stdout_data"], # DONE
+            "stderr_data": benchmark_raw_dict["process"]["stderr_data"], # DONE
+            "execution_time": benchmark_raw_dict["gnu_time_results"]["Elapsed (wall clock) time (h:mm:ss or m:ss)"], # DONE
+            "execution_time_psutil": benchmark_raw_dict["process"]["execution_time"] # TODO
         },
         "time_series":
         {
-            "sample_milliseconds": benchmark_raw_dict["time_series"]["sample_milliseconds"],
-            "cpu_percentages": benchmark_raw_dict["time_series"]["cpu_percentages"],
-            "memory_bytes": benchmark_raw_dict["time_series"]["memory_bytes"]
+            "sample_milliseconds": benchmark_raw_dict["time_series"]["sample_milliseconds"], # DONE
+            "cpu_percentages": benchmark_raw_dict["time_series"]["cpu_percentages"], # DONE
+            "memory_bytes": benchmark_raw_dict["time_series"]["memory_bytes"] # DONE
         }
     }
 
@@ -129,7 +121,9 @@ def raw_to_final_benchmark(benchmark_raw_dict):
 # Performs benchmarking on the command based on both /usr/bin/time and psutil library
 # Debugging mode = false prevents from making calculations that are not going to be used in benchmark_command command
 def single_benchmark_command_raw(command, debugging = False):
-    commands_list = command.split(" ")
+    
+    # https://docs.python.org/3/library/shlex.html#shlex.split
+    commands_list = shlex.split(command)
 
     time_tmp_output_file = tempfile.mkstemp(suffix = '.temp')[1] # [1] for getting filename and not the file's stream
 
@@ -263,8 +257,12 @@ def single_benchmark_command_raw(command, debugging = False):
         gnu_times_dict[key] = value
     
     # We need a conversion for elapsed time from time format to seconds
-    gnu_elapsed_wall_clock_key = "Elapsed (wall clock) time (h:mm:ss or m:ss)"
-    gnu_times_dict[gnu_elapsed_wall_clock_key] = get_sec(gnu_times_dict[gnu_elapsed_wall_clock_key])
+    gnu_time_elapsed_wall_clock_key = "Elapsed (wall clock) time (h:mm:ss or m:ss)"
+    gnu_times_dict[gnu_time_elapsed_wall_clock_key] = str(get_sec(gnu_times_dict[gnu_time_elapsed_wall_clock_key]))
+    # And another conversion for cpu utilization percentage string
+    gnu_time_job_cpu_percent = "Percent of CPU this job got"
+    gnu_times_dict[gnu_time_job_cpu_percent] = float(gnu_times_dict[gnu_time_job_cpu_percent].replace("%", ""))
+
     f.close()
     os.remove(time_tmp_output_file)
     
@@ -290,7 +288,7 @@ def single_benchmark_command_raw(command, debugging = False):
         "memory": 
         {
             "max": memory_max,
-            "max_perprocess": memory_perprocess_max
+            "max_perprocess": memory_perprocess_max,
         },
         "disk": 
         {
