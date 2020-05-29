@@ -1,14 +1,23 @@
 import time
-from collections import namedtuple, defaultdict
+from collections import namedtuple, defaultdict, deque
 import numpy as np
 from beeprint import pp
 from inspect import isfunction
+
+matplotlib_available = True
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    matplotlib_available = False
 
 
 class BenchmarkResults():
     _iterations = []
     def __init__(self, iterations):
         self._iterations = iterations
+
+    def _has_one_iteration(self):
+        return len(self._iterations) == 1
 
     def get_single_iteration(self):
         return BenchmarkDict.from_dict(self._iterations[0])
@@ -51,43 +60,85 @@ class BenchmarkResults():
         return BenchmarkDict.from_dict(value_per_attribute_stats_dict)
 
     def get_averages(self):
+
+        time_series_dict_key = "time_series"
+        
+        time_series_x = deque([]) # A list of list of x values (in this case, milliseconds) to calculate y averages against
+        time_series_y_values = {} # Dict of list of possible y lists for each kind of resource
         def avg_replace_func(list_of_objects, key_path):
             sample_data = list_of_objects[0]
             if(isinstance(sample_data, str)):
                 return None
-            elif(key_path[0] == "time_series"):
-                print(list_of_objects)
+            elif(key_path[0] == time_series_dict_key):
+                if(key_path[1] == "sample_milliseconds"):
+                    time_series_x.append(list_of_objects)
+                else:
+                    time_series_y_values[key_path[1]] = list_of_objects
             else:
                 return np.hstack(np.array(list_of_objects)).mean()
+
+        averaged_time_series = {}
+
+        # TODO: Implement average of the time series algorithm
         
         value_per_attribute_avgs_dict = self._get_values_per_attribute(self._iterations, avg_replace_func)
+        
+        value_per_attribute_avgs_dict["time_series"] = averaged_time_series
+
         return BenchmarkDict.from_dict(value_per_attribute_avgs_dict)
 
-    def get_resources_plot(self):
-        pass
+    def get_resources_plot(self, width = 15, height = 3):
+        if(not matplotlib_available):
+            raise Exception("You need to install matplotlib before using this method")
+
+        time_series_obj = None
+        if(self._has_one_iteration()):
+            time_series_obj = self.get_single_iteration()
+        else:
+            time_series_obj = self.get_averages()
+            print(time_series_obj["time_series"])
+        
+        time_series_obj = time_series_obj["time_series"]
+
+        results_sample_milliseconds = time_series_obj["sample_milliseconds"]
+
+        results_memory_values = time_series_obj["memory_bytes"]
+        results_cpu_percentages = time_series_obj["cpu_percentages"]
+            
+
+        ## CPU + MEMORY
+
+        # Set the figure's size
+        plt.rcParams["figure.figsize"] = (width, height)
+
+        # Data for plotting
+        x = results_sample_milliseconds
+        memory_y = results_memory_values
+        cpu_y = results_cpu_percentages
 
 
-# Get's an array of dictionaries and returns the averages for each (nested) property.
-# Each of array's dictionary values have to be of the same type among all array members
-def calculate_dict_stats(arr_dicts):
-    sample_dict = arr_dicts[0]
-    stats = {}
-    for key, value in sample_dict.items():
-        # values_list is values for that key across all dictionaries passed in the input list (arr_dicts)
-        values_list = list(map(lambda parent_dict: parent_dict[key], arr_dicts))
-        if(isinstance(value, dict)):
-            # Check inner values recursively
-            recursive_stats = calculate_dict_stats(values_list)
-            stats[key] = recursive_stats
-        elif(type(value) == int or type(value) == float):
-            # number_values_list is a list of that specific key among all done benchmarks for example
-            stats[key] = BenchmarkStats(values_list)
-        elif(type(value) == BenchmarkStats):
-            # Combine all the data from all these stats objects into one numpy array and
-            # recalculate the stats for it
-            data_values_list = np.concatenate(list(map(lambda stats_obj: stats_obj.data, values_list)))
-            stats[key] = BenchmarkStats(data_values_list)
-    return stats
+        color = 'tab:blue'
+        fig, ax_memory = plt.subplots()
+        ax_memory.grid()
+        ax_memory.set_xlabel('Milliseconds')
+        ax_memory.set_ylabel('Memory (Bytes)', color=color)
+        ax_memory.plot(x, memory_y, color=color, alpha=0.8)
+        ax_memory.tick_params(axis='y', labelcolor=color)
+        plt.fill_between(x, memory_y, alpha=0.2, color=color)
+
+        color = 'tab:green'
+        ax_cpu = ax_memory.twinx()
+        ax_cpu.set_ylabel('CPU (%)', color=color)
+        ax_cpu.plot(x, cpu_y, color=color, alpha=0.75, linewidth=1)
+        ax_cpu.tick_params(axis='y', labelcolor=color)
+        #plt.fill_between(x, cpu_y, alpha=0.2, color=color)
+
+        #plt.tight_layout()
+
+        # https://stackoverflow.com/a/31845332
+        plt.close(fig)
+
+        return fig
 
 # https://stackoverflow.com/a/41274937
 # Allows attribute access through both obj["key"] (internal library convenience) and obj.key (external developer convenience)

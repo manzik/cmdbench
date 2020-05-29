@@ -25,49 +25,6 @@ def benchmark_command(command, iterations_num = 1, debugging = False):
 
     return BenchmarkResults(final_benchmark_results)
 
-"""
-def benchmark_command(command, times = 1, debugging = False):
-    if(times <= 0):
-        raise Exception("The number of times to run the command should be >= 1")
-    raw_benchmark_results = benchmark_command_raw(command, times, debugging)["results"]
-    final_benchmark_results = list(map(raw_to_final_benchmark, raw_benchmark_results))
-    final_benchmark_stats = calculate_dict_stats(final_benchmark_results)
-
-    final_benchmark = {
-        "stats": final_benchmark_stats,
-        "results": final_benchmark_results
-    }
-    print(final_benchmark)
-    final_benchmark = BenchmarkDict.from_dict(final_benchmark)
-
-    if(times == 1):
-        return final_benchmark.results
-    else:
-        return final_benchmark
-
-
-def benchmark_command_raw(command, times = 1, debugging = False):
-    if(times <= 0):
-        raise Exception("The number of times to run the command should be >= 1")
-    raw_benchmarks_results = []
-    for _ in range(times):
-        raw_benchmarks_result = single_benchmark_command_raw(command, debugging)
-        raw_benchmarks_results.append(raw_benchmarks_result)
-    
-    raw_benchmark_stats = calculate_dict_stats(raw_benchmarks_results)
-
-    raw_benchmark = {
-        "stats": raw_benchmark_stats,
-        "results": raw_benchmarks_results
-    }
-    raw_benchmark = BenchmarkDict.from_dict(raw_benchmark)
-
-    if(times == 1):
-        return raw_benchmark.results
-    else:
-        return raw_benchmark
-"""
-
 # Uses benchmark_command_raw and raw_to_final_benchmark to get, compile and format 
 # the most accurate info from /user/bin/time and psutil library 
 #
