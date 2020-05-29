@@ -57,7 +57,7 @@ def benchmark_command(command, times = 1, debugging = False):
         "results": final_benchmark_results
     }
     print(final_benchmark)
-    final_benchmark = BenchmarkDict.fromDict(final_benchmark)
+    final_benchmark = BenchmarkDict.from_dict(final_benchmark)
 
     if(times == 1):
         return final_benchmark.results
@@ -79,7 +79,7 @@ def benchmark_command_raw(command, times = 1, debugging = False):
         "stats": raw_benchmark_stats,
         "results": raw_benchmarks_results
     }
-    raw_benchmark = BenchmarkDict.fromDict(raw_benchmark)
+    raw_benchmark = BenchmarkDict.from_dict(raw_benchmark)
 
     if(times == 1):
         return raw_benchmark.results

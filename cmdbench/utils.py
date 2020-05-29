@@ -8,17 +8,17 @@ class BenchmarkData():
     _iterations = []
     def __init__(self, iterations):
         self._iterations = iterations
-    def getSingleIteration(self):
-        return BenchmarkDict.fromDict(self._iterations[0])
-    def getIterations(self):
-        return BenchmarkDict.fromDict(self._iterations)
-    def getValuesPerAttribute(self):
+    def get_single_iteration(self):
+        return BenchmarkDict.from_dict(self._iterations[0])
+    def get_iterations(self):
+        return BenchmarkDict.from_dict(self._iterations)
+    def get_values_per_attribute(self):
+        value_per_attribute_values = {}
+    def get_statistics(self):
         pass
-    def getStatistics(self):
+    def get_averages(self):
         pass
-    def getAverages(self):
-        pass
-    def getResourcesPlot(self):
+    def get_resources_plot(self):
         pass
 
 # https://stackoverflow.com/a/41274937
@@ -36,41 +36,41 @@ class BenchmarkDict(defaultdict):
     def __setattr__(self, key, value):
         self[key] = value
     def __repr__(self):
-        return pp(self.toDict(), False)
-    def toDict(self):
+        return pp(self.to_dict(), False)
+    def to_dict(self):
         outputDict = {}
         for key, value in self.items():
-            attrDictPairValue = None
+            attr_dict_pair_value = None
             if(isinstance(value, BenchmarkDict)):
-                attrDictPairValue = value.toDict()
+                attr_dict_pair_value = value.to_dict()
             else:
-                attrDictPairValue = value
-            outputDict[key] = attrDictPairValue
+                attr_dict_pair_value = value
+            outputDict[key] = attr_dict_pair_value
         return outputDict
     @staticmethod
-    def fromDict(obj, first = True):
-        attrDict = BenchmarkDict()
+    def from_dict(obj, first = True):
+        attr_dict = BenchmarkDict()
         for key, value in obj.items():
-            attrDictPairValue = BenchmarkDict.getDictValueConverted(value)
-            attrDict.__setattr__(key, attrDictPairValue)
+            attr_dict_pair_value = BenchmarkDict.get_dict_value_converted(value)
+            attr_dict.__setattr__(key, attr_dict_pair_value)
             if(first):
-                print(key, attrDictPairValue)
-        return attrDict
+                print(key, attr_dict_pair_value)
+        return attr_dict
     @staticmethod
-    def getDictValueConverted(value):
-        attrDictPairValue = None
+    def get_dict_value_converted(value):
+        attr_dict_pair_value = None
         if(isinstance(value, dict)):
-            attrDictPairValue = BenchmarkDict.fromDict(value, False)
+            attr_dict_pair_value = BenchmarkDict.from_dict(value, False)
         elif(isinstance(value, BenchmarkDict)):
-            attrDictPairValue = BenchmarkDict.fromDict(value, False)
+            attr_dict_pair_value = BenchmarkDict.from_dict(value, False)
         elif(isinstance(value, list)):
             newList = []
             for item in value:
-                newList.append(BenchmarkDict.getDictValueConverted(item))
-            attrDictPairValue = newList
+                newList.append(BenchmarkDict.get_dict_value_converted(item))
+            attr_dict_pair_value = newList
         else:
-            attrDictPairValue = value
-        return attrDictPairValue
+            attr_dict_pair_value = value
+        return attr_dict_pair_value
 
 class BenchmarkStats:
     def __init__(self, data):
