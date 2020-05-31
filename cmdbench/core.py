@@ -1,5 +1,6 @@
 from .utils import *
 from collections import deque
+import multiprocessing
 import numpy as np
 import sys
 import io
@@ -8,84 +9,22 @@ import subprocess
 import psutil
 import sys
 import tempfile
-
-# Get's an array of dictionaries and returns the averages for each (nested) property.
-# Each of array's dictionary values have to be of the same type among all array members
-def calculate_dict_stats(arr_dicts):
-    sample_dict = arr_dicts[0]
-    stats = {}
-    for key, value in sample_dict.items():
-        # values_list is values for that key across all dictionaries passed in the input list (arr_dicts)
-        values_list = list(map(lambda parent_dict: parent_dict[key], arr_dicts))
-        if(isinstance(value, dict)):
-            # Check inner values recursively
-            recursive_stats = calculate_dict_stats(values_list)
-            stats[key] = recursive_stats
-        elif(type(value) == int or type(value) == float):
-            # number_values_list is a list of that specific key among all done benchmarks for example
-            stats[key] = BenchmarkStats(values_list)
-        elif(type(value) == BenchmarkStats):
-            # Combine all the data from all these stats objects into one numpy array and
-            # recalculate the stats for it
-            data_values_list = np.concatenate(list(map(lambda stats_obj: stats_obj.data, values_list)))
-            stats[key] = BenchmarkStats(data_values_list)
-    return stats
+import shlex
 
 def benchmark_command(command, iterations_num = 1, debugging = False):
     if(iterations_num <= 0):
-        raise Exception("The number of times to run the command should be >= 1")
+        raise Exception("The number of iterations to run the command should be >= 1")
+    if(iterations_num <= 0):
+        raise Exception("The number of times to run the command per each iterations should be >= 1")
 
     raw_benchmark_results = []
     for _ in range(iterations_num):
         raw_benchmark_result = single_benchmark_command_raw(command, debugging)
         raw_benchmark_results.append(raw_benchmark_result)
     
-    final_benchmark_results = list(map(raw_to_final_benchmark, raw_benchmark_results))
+    final_benchmark_results = list(map(lambda raw_benchmark_result: raw_to_final_benchmark(raw_benchmark_result, debugging), raw_benchmark_results))
 
-    return BenchmarkData(final_benchmark_results)
-
-"""
-def benchmark_command(command, times = 1, debugging = False):
-    if(times <= 0):
-        raise Exception("The number of times to run the command should be >= 1")
-    raw_benchmark_results = benchmark_command_raw(command, times, debugging)["results"]
-    final_benchmark_results = list(map(raw_to_final_benchmark, raw_benchmark_results))
-    final_benchmark_stats = calculate_dict_stats(final_benchmark_results)
-
-    final_benchmark = {
-        "stats": final_benchmark_stats,
-        "results": final_benchmark_results
-    }
-    print(final_benchmark)
-    final_benchmark = BenchmarkDict.from_dict(final_benchmark)
-
-    if(times == 1):
-        return final_benchmark.results
-    else:
-        return final_benchmark
-
-
-def benchmark_command_raw(command, times = 1, debugging = False):
-    if(times <= 0):
-        raise Exception("The number of times to run the command should be >= 1")
-    raw_benchmarks_results = []
-    for _ in range(times):
-        raw_benchmarks_result = single_benchmark_command_raw(command, debugging)
-        raw_benchmarks_results.append(raw_benchmarks_result)
-    
-    raw_benchmark_stats = calculate_dict_stats(raw_benchmarks_results)
-
-    raw_benchmark = {
-        "stats": raw_benchmark_stats,
-        "results": raw_benchmarks_results
-    }
-    raw_benchmark = BenchmarkDict.from_dict(raw_benchmark)
-
-    if(times == 1):
-        return raw_benchmark.results
-    else:
-        return raw_benchmark
-"""
+    return BenchmarkResults(final_benchmark_results)
 
 # Uses benchmark_command_raw and raw_to_final_benchmark to get, compile and format 
 # the most accurate info from /user/bin/time and psutil library 
@@ -93,59 +32,145 @@ def benchmark_command_raw(command, times = 1, debugging = False):
 # For reasoning of choosing the right tool (either GNU time or psutil) for each
 # resource (CPU, memory and disk usage) refer to the ipython notebook in the repository
 
-def raw_to_final_benchmark(benchmark_raw_dict):
+def raw_to_final_benchmark(benchmark_raw_dict, debugging = False):
+    if(debugging): # Just return all of the collected data if is in debugging mode
+        return benchmark_raw_dict
     benchmark_results = {
         "cpu":
         {
-            "user_time": benchmark_raw_dict["gnu_time_results"]["User time (seconds)"],
-            "system_time": benchmark_raw_dict["gnu_time_results"]["System time (seconds)"],
-            "total_time": benchmark_raw_dict["gnu_time_results"]["User time (seconds)"] + benchmark_raw_dict["gnu_time_results"]["System time (seconds)"],
+            "user_time": benchmark_raw_dict["gnu_time_results"]["User time (seconds)"], # TODO
+            "user_time_psutil": benchmark_raw_dict["cpu"]["user_time"], # TODO
+            "system_time": benchmark_raw_dict["gnu_time_results"]["System time (seconds)"], # TODO
+            "system_time_psutil": benchmark_raw_dict["cpu"]["system_time"], # TODO
+            "total_time": benchmark_raw_dict["gnu_time_results"]["User time (seconds)"] + benchmark_raw_dict["gnu_time_results"]["System time (seconds)"], # TODO
+            "total_time_psutil": benchmark_raw_dict["cpu"]["user_time"] + benchmark_raw_dict["cpu"]["system_time"], # TODO
+            "utilization_percentage": benchmark_raw_dict["gnu_time_results"]["Percent of CPU this job got"]
         },
         "memory": 
         {
-            "max": benchmark_raw_dict["memory"]["max"],
-            "max_perprocess": benchmark_raw_dict["memory"]["max_perprocess"]
+            "max": benchmark_raw_dict["memory"]["max"], # DONE
+            "max_perprocess": benchmark_raw_dict["memory"]["max_perprocess"], # DONE
+            "max_perprocess_psutil": benchmark_raw_dict["gnu_time_results"]["Maximum resident set size (kbytes)"] * 1024 # DONE
         },
         "disk": 
         {
-            "io_counters": None
+            "io_counters": 
+            {
+                "total": 0, # TODO
+                "read": 0, # TODO
+                "write": 0 # TODO
+            }
         },
         "process":
         {
-            "stdout_data": benchmark_raw_dict["process"]["stdout_data"],
-            "stderr_data": benchmark_raw_dict["process"]["stderr_data"],
-            "execution_time": benchmark_raw_dict["gnu_time_results"]["Elapsed (wall clock) time (h:mm:ss or m:ss)"]
+            "stdout_data": benchmark_raw_dict["process"]["stdout_data"], # DONE
+            "stderr_data": benchmark_raw_dict["process"]["stderr_data"], # DONE
+            "execution_time": benchmark_raw_dict["gnu_time_results"]["Elapsed (wall clock) time (h:mm:ss or m:ss)"], # DONE
+            "execution_time_psutil": benchmark_raw_dict["process"]["execution_time"] # TODO
         },
         "time_series":
         {
-            "sample_milliseconds": benchmark_raw_dict["time_series"]["sample_milliseconds"],
-            "cpu_percentages": benchmark_raw_dict["time_series"]["cpu_percentages"],
-            "memory_bytes": benchmark_raw_dict["time_series"]["memory_bytes"]
+            "sample_milliseconds": benchmark_raw_dict["time_series"]["sample_milliseconds"], # DONE
+            "cpu_percentages": benchmark_raw_dict["time_series"]["cpu_percentages"], # DONE
+            "memory_bytes": benchmark_raw_dict["time_series"]["memory_bytes"] # DONE
         }
     }
 
     return benchmark_results
 
+def calculate_time_series(time_series_dict, debugging):
+    
+    while(time_series_dict["target_process_pid"] == -1):
+        pass
+
+    p = psutil.Process(time_series_dict["target_process_pid"])
+    execution_start = time_series_dict["execution_start"]
+    sample_milliseconds = time_series_dict["sample_milliseconds"]
+    cpu_percentages = time_series_dict["cpu_percentages"]
+    memory_values = time_series_dict["memory_values"]
+
+    memory_perprocess_max = 0; time_series_dict["memory_perprocess_max"]
+    memory_max = 0
+
+    # Children that we are processing
+    monitoring_process_children = set()
+
+    while(True):
+        # retcode would be None while subprocess is running
+        if(not p.is_running()):
+            break
+        
+        try:
+            time_from_monitoring_start = current_milli_time() - execution_start
+
+
+            cpu_percentage = p.cpu_percent()
+
+            memory_usage_info = p.memory_info()
+            memory_usage = memory_usage_info.rss
+
+            memory_perprocess_max = max(memory_perprocess_max, memory_usage)
+
+            current_children = p.children(recursive=True)
+            for child in current_children:
+                with child.oneshot():
+                    child_memory_usage_info = child.memory_info()
+                    child_memory_usage = child_memory_usage_info.rss
+
+                    memory_usage += child_memory_usage
+
+                    memory_perprocess_max = max(memory_perprocess_max, child_memory_usage)
+                    # We need to get cpu_percentage() only for children existing for at list one iteration
+                    # Calculate CPU usage for children we have been monitoring
+                    if(child in monitoring_process_children):
+                        cpu_percentage += child.cpu_percent()
+                    # Add children not already in our monitoring_process_children
+                    else:
+                        monitoring_process_children.add(child)
+
+            memory_max = max(memory_max, memory_usage)
+
+            sample_milliseconds.append(time_from_monitoring_start)
+            cpu_percentages.append(cpu_percentage)
+            memory_values.append(memory_usage)
+
+        except psutil.AccessDenied as access_denied_error:
+            print("Root access is needed for monitoring the target command.")
+            raise access_denied_error
+            break
+        except psutil.NoSuchProcess as e:
+            # The process might end while we are measuring resources
+            pass
+        except Exception as e:
+            raise e
+            break
+
+    time_series_dict["memory_max"] = memory_max
+    time_series_dict["memory_perprocess_max"] = memory_perprocess_max
+
+    time_series_dict["sample_milliseconds"] = sample_milliseconds
+    time_series_dict["cpu_percentages"] = cpu_percentages
+    time_series_dict["memory_values"] = memory_values 
+
 # Performs benchmarking on the command based on both /usr/bin/time and psutil library
 # Debugging mode = false prevents from making calculations that are not going to be used in benchmark_command command
 def single_benchmark_command_raw(command, debugging = False):
-    commands_list = command.split(" ")
+    
+    # https://docs.python.org/3/library/shlex.html#shlex.split
+    commands_list = shlex.split(command)
 
     time_tmp_output_file = tempfile.mkstemp(suffix = '.temp')[1] # [1] for getting filename and not the file's stream
 
-    # Wrap the target command around the time command
+    # Preprocessing: Wrap the target command around the time command
     commands_list = ["/usr/bin/time", "-o", time_tmp_output_file, "-v"] + commands_list
-    
-    time_process = psutil.Popen(commands_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     # START: Initialization
 
     # CPU
-    cpu_times = 0
+    cpu_times = {}
 
     # Memory
-    memory_max = 0
-    memory_perprocess_max = 0
+    
 
     # Disk
     disk_io_counters = {}
@@ -159,10 +184,24 @@ def single_benchmark_command_raw(command, debugging = False):
     cpu_percentages = []
     memory_values = []
 
-    # Children that we are processing
-    monitoring_process_children = set()
-
     # END: Initialization
+
+    # Subprocess: For time series measurements
+    manager = multiprocessing.Manager()
+    time_series_dict_template = {
+        "target_process_pid": -1,
+        "execution_start": -1, 
+        "sample_milliseconds": sample_milliseconds, 
+        "cpu_percentages": cpu_percentages, 
+        "memory_values": memory_values,
+        "memory_max": 0,
+        "memory_perprocess_max": 0}
+    time_series_dict = manager.dict(time_series_dict_template)
+    time_series_process = multiprocessing.Process(target=calculate_time_series, args=(time_series_dict, debugging, ))
+    time_series_process.start()
+
+    # Finally, run the command
+    time_process = psutil.Popen(commands_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     
     # p is the target process to monitor
     p = None
@@ -172,76 +211,62 @@ def single_benchmark_command_raw(command, debugging = False):
         if(len(time_children) > 0):
             p = time_children[0]
 
+    # While loop runs as long as the target command is running
     execution_start = current_milli_time()
+    time_series_dict["execution_start"] = execution_start
+    time_series_dict["target_process_pid"] = p.pid
+    
     while(True):
-
         time_process_retcode = time_process.poll()
         # retcode would be None while subprocess is running
         if(time_process_retcode is not None or not p.is_running()):
             break
         
         # https://psutil.readthedocs.io/en/latest/#psutil.Process.oneshot
+        
+        # https://psutil.readthedocs.io/en/latest/#psutil.Process.oneshot
         with p.oneshot():
-            time_from_monitoring_start = current_milli_time() - execution_start
             try:
-                current_children = set(p.children(recursive=True))
-                
+
                 ## CPU
 
-                cpu_percentage = p.cpu_percent()
-
-                # We need to get cpu_percentage() only for children existing for at list one iteration
-                # Calculate CPU usage for children we have been monitoring
-                for existing_child in monitoring_process_children.union(current_children):
-                    cpu_percentage += existing_child.cpu_percent()
-                
-                # Add children not already in our monitoring_process_children
-                for new_child in current_children.difference(monitoring_process_children):
-                    monitoring_process_children.add(new_child)
-
-                cpu_percentages.append(cpu_percentage)
-    
                 # We will be using GNU Time's cpu times in production code and not psutil's
                 if(debugging):
                     cpu_times = p.cpu_times()
-    
+                
                 ## DISK
-    
+
                 disk_io_counters = p.io_counters()
-    
+
                 ## MEMORY
-    
+
                 # http://grodola.blogspot.com/2016/02/psutil-4-real-process-memory-and-environ.html
-                
-                memory_usage_info = p.memory_info()
-                memory_usage = memory_usage_info.rss
-                memory_perprocess_max = max(memory_perprocess_max, memory_usage_info.rss)
-                
-                for child in current_children:
-                    child_memory_usage_info = child.memory_info()
-                    memory_usage += child_memory_usage_info.rss
-                    memory_perprocess_max = max(memory_perprocess_max, child_memory_usage_info.rss)
-                    
-                
-                memory_values.append(memory_usage)
-                memory_max = max(memory_max, memory_usage)
 
-                ## ADD SAMPLE'S TIME
-
-                sample_milliseconds.append(time_from_monitoring_start)
-
+                
             except psutil.AccessDenied as access_denied_error:
                 print("Root access is needed for monitoring the target command.")
                 raise access_denied_error
                 break
-            except psutil.NoSuchProcess:
+            except psutil.NoSuchProcess as e:
                 # The process might end while we are measuring resources
                 pass
             except Exception as e:
                 raise e
                 break
+    time_series_process.join()
         
     exection_end = current_milli_time()
+
+    memory_max = time_series_dict["memory_max"]
+    memory_perprocess_max = time_series_dict["memory_perprocess_max"]
+    
+    sample_milliseconds = time_series_dict["sample_milliseconds"]
+    cpu_percentages = time_series_dict["cpu_percentages"]
+    memory_values = time_series_dict["memory_values"]
+
+    #print((exection_end - execution_start) / 1000)
+    #print(list(map(lambda line: line.decode(sys.stdout.encoding), time_process.stdout.readlines())))
+    #print(cpu_times)
 
     # https://psutil.readthedocs.io/en/latest/#psutil.Process.cpu_times
     cpu_user_time = cpu_times.user
@@ -258,13 +283,19 @@ def single_benchmark_command_raw(command, debugging = False):
     gnu_times_dict = {}
     for gnu_times_line in gnu_times_lines:
         tokens = list(map(lambda token: token.strip(), gnu_times_line.rsplit(": ", 1)))
+        if(len(tokens) < 2):
+            continue
         key = tokens[0]
         value = tokens[1]
         gnu_times_dict[key] = value
     
     # We need a conversion for elapsed time from time format to seconds
-    gnu_elapsed_wall_clock_key = "Elapsed (wall clock) time (h:mm:ss or m:ss)"
-    gnu_times_dict[gnu_elapsed_wall_clock_key] = get_sec(gnu_times_dict[gnu_elapsed_wall_clock_key])
+    gnu_time_elapsed_wall_clock_key = "Elapsed (wall clock) time (h:mm:ss or m:ss)"
+    gnu_times_dict[gnu_time_elapsed_wall_clock_key] = str(get_sec(gnu_times_dict[gnu_time_elapsed_wall_clock_key]))
+    # And another conversion for cpu utilization percentage string
+    gnu_time_job_cpu_percent = "Percent of CPU this job got"
+    gnu_times_dict[gnu_time_job_cpu_percent] = float(gnu_times_dict[gnu_time_job_cpu_percent].replace("%", ""))
+
     f.close()
     os.remove(time_tmp_output_file)
     
@@ -279,28 +310,94 @@ def single_benchmark_command_raw(command, debugging = False):
             gnu_times_dict[key] = int(value)
         elif(isfloat(value)):
             gnu_times_dict[key] = float(value)
+    
+    # GNU Time output: For reference
+    """
+    {
+      'Average resident set size (kbytes)': 0,
+      'Average shared text size (kbytes)': 0,
+      'Average stack size (kbytes)': 0,
+      'Average total size (kbytes)': 0,
+      'Average unshared data size (kbytes)': 0,
+      'Command being timed': '"node --expose-gc test.js"',
+      'Elapsed (wall clock) time (h:mm:ss or m:ss)': 5.74,
+      'Exit status': 0,
+      'File system inputs': 0,
+      'File system outputs': 10240,
+      'Involuntary context switches': 91,
+      'Major (requiring I/O) page faults': 0,
+      'Maximum resident set size (kbytes)': 614304,
+      'Minor (reclaiming a frame) page faults': 740886,
+      'Page size (bytes)': 4096,
+      'Percent of CPU this job got': 178,
+      'Signals delivered': 0,
+      'Socket messages received': 0,
+      'Socket messages sent': 0,
+      'Swaps': 0,
+      'System time (seconds)': 0.76,
+      'User time (seconds)': 9.47,
+      'Voluntary context switches': 7585,
+    }
+    """
 
     resource_usages = {
-        "cpu": 
+        "gnu_time": # Data collected from GNU Time
         {
-            "total_time": cpu_total_time,
-            "user_time": cpu_user_time,
-            "system_time": cpu_system_time
+            "cpu": 
+            {
+                "user_time": gnu_times_dict["User time (seconds)"],
+                "system_time": gnu_times_dict["System time (seconds)"],
+                "total_time": gnu_times_dict["User time (seconds)"] + gnu_times_dict["System time (seconds)"]
+            },
+            "memory": 
+            {
+                "max_perprocess": gnu_times_dict["Maximum resident set size (kbytes)"] * 1024,
+            },
+            "disk": 
+            {
+                # https://stackoverflow.com/a/42127533
+                "file_system_inputs": gnu_times_dict["File system inputs"] * 512,
+                "file_system_outputs": gnu_times_dict["File system outputs"] * 512
+            },
+            "process":
+            {
+                "execution_time": gnu_times_dict["Elapsed (wall clock) time (h:mm:ss or m:ss)"] # milliseconds to seconds
+            }
         },
-        "memory": 
+        "psutil": # Data collected from psutil
         {
-            "max": memory_max,
-            "max_perprocess": memory_perprocess_max
+            "cpu": 
+            {
+                "total_time": cpu_total_time,
+                "user_time": cpu_user_time,
+                "system_time": cpu_system_time
+            },
+            "memory": 
+            {
+                "max": memory_max,
+                "max_perprocess": memory_perprocess_max,
+            },
+            "disk": 
+            {
+                "io_counters": {
+                    "read_bytes": disk_io_counters.read_bytes,
+                    "write_bytes": disk_io_counters.write_bytes,
+                    "read_count": disk_io_counters.read_count,
+                    "write_count": disk_io_counters.write_count,
+                    "read_chars": disk_io_counters.read_chars,
+                    "write_chars": disk_io_counters.write_chars
+                }
+            },
+            "process":
+            {
+                "execution_time": (exection_end - execution_start) / 1000 # milliseconds to seconds
+            }
         },
-        "disk": 
-        {
-            "io_counters": disk_io_counters
-        },
-        "process":
+        "general": # Info independent from GNU Time and psutil
         {
             "stdout_data": "\n".join(process_output_lines),
             "stderr_data": "\n".join(process_error_lines),
-            "execution_time": (exection_end - execution_start) / 1000 # milliseconds to seconds
+            "exit_code": gnu_times_dict["Exit status"]
         },
         "time_series":
         {

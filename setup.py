@@ -10,6 +10,9 @@ setup(
     packages=['cmdbench'],
     # Needed for dependencies
     install_requires=['numpy', 'psutil>=5.7.0', 'beeprint>=2.4.10'],
+    extras_require = {
+        "resources_plotting":  ["matplotlib>=3.2.1"]
+    },
     # *strongly* suggested for sharing
     version='0.1',
     # The license can be anything you like

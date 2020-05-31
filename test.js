@@ -4,10 +4,10 @@ let child_process = require('child_process');
 let isChild = process.argv.indexOf("--ischild") > -1, childNum = isChild ? process.argv[3] : 0;
 console.log(isChild ? "Running child process #" + childNum : "Running master process");
 
-const CHILD_PROCESSES_COUNT = 4; // Number of times to run the same script as a child
+const CHILD_PROCESSES_COUNT = 9; // Number of times to run the same script as a child
 const WAIT_MS = 500;
 const ERROR_CHANCE = 0.0;
-const TEST_FILE_SIZE_KB = 1024;
+const TEST_FILE_SIZE_KB = 128;
 const LOOP_COUNT = 10000000;
 const TEST_FILE_SIZE_PATH = `file${childNum}.test`;
 
@@ -51,7 +51,7 @@ async function main()
 		fs.writeFileSync(TEST_FILE_SIZE_PATH, testData);
 
 		// READ FROM DISK
-		testData = fs.readFileSync(TEST_FILE_SIZE_PATH);
+		testData = fs.readFileSync(TEST_FILE_SIZE_PATH, {flag: "rs+"});
 
 		// DELETE FROM DISK
 		fs.unlinkSync(TEST_FILE_SIZE_PATH);
