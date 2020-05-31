@@ -70,11 +70,7 @@ class BenchmarkResults():
             if(isinstance(sample_data, str)):
                 return None
             elif(key_path[0] == time_series_dict_key):
-<<<<<<< HEAD
                 if(["sample_milliseconds", "exit_code"].index(key_path[1]) > -1):
-=======
-                if(key_path[1] == "sample_milliseconds"):
->>>>>>> 23c4f0bf89d7fcb856e3911ba1d222f76f6f20a6
                     time_series_x.append(list_of_objects)
                 else:
                     time_series_y_values[key_path[1]] = list_of_objects
