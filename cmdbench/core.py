@@ -22,7 +22,11 @@ def benchmark_command(command, iterations_num = 1, debugging = False):
         raw_benchmark_result = single_benchmark_command_raw(command, debugging)
         raw_benchmark_results.append(raw_benchmark_result)
     
+<<<<<<< HEAD
     final_benchmark_results = list(map(lambda raw_benchmark_result: raw_to_final_benchmark(raw_benchmark_result, debugging), raw_benchmark_results))
+=======
+    final_benchmark_results = list(map(raw_to_final_benchmark, raw_benchmark_results))
+>>>>>>> 23c4f0bf89d7fcb856e3911ba1d222f76f6f20a6
 
     return BenchmarkResults(final_benchmark_results)
 
@@ -366,6 +370,7 @@ def single_benchmark_command_raw(command, debugging = False):
         },
         "psutil": # Data collected from psutil
         {
+<<<<<<< HEAD
             "cpu": 
             {
                 "total_time": cpu_total_time,
@@ -392,6 +397,10 @@ def single_benchmark_command_raw(command, debugging = False):
             {
                 "execution_time": (exection_end - execution_start) / 1000 # milliseconds to seconds
             }
+=======
+            "max": memory_max,
+            "max_perprocess": memory_perprocess_max,
+>>>>>>> 23c4f0bf89d7fcb856e3911ba1d222f76f6f20a6
         },
         "general": # Info independent from GNU Time and psutil
         {
