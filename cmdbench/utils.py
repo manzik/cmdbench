@@ -157,9 +157,9 @@ class BenchmarkResults():
 
         # Pack data from time_series_x_values and time_series_y_values to averaged_time_series
         # and finally time_series data
-        averaged_time_series["sample_milliseconds"] = time_series_x_values_out
+        averaged_time_series["sample_milliseconds"] = np.array(time_series_x_values_out)
         for key, value in  time_series_y_values_out.items():
-            averaged_time_series[key] = value
+            averaged_time_series[key] = np.array(value)
         value_per_attribute_avgs_dict["time_series"] = averaged_time_series
 
         return BenchmarkDict.from_dict(value_per_attribute_avgs_dict)
@@ -173,13 +173,13 @@ class BenchmarkResults():
             time_series_obj = self.get_single_iteration()
         else:
             time_series_obj = self.get_averages()
-            print(time_series_obj["time_series"])
         
         time_series_obj = time_series_obj["time_series"]
 
-        results_sample_milliseconds = time_series_obj["sample_milliseconds"] # On x axis
-        results_memory_values = time_series_obj["memory_bytes"] # On y axis
-        results_cpu_percentages = time_series_obj["cpu_percentages"] # On y axis
+        results_sample_milliseconds = time_series_obj["sample_milliseconds"]
+
+        results_memory_values = time_series_obj["memory_bytes"]
+        results_cpu_percentages = time_series_obj["cpu_percentages"]
             
 
         ## CPU + MEMORY
@@ -225,9 +225,9 @@ class BenchmarkDict(defaultdict):
     def __getattr__(self, key):
         if key.startswith('_'):
             raise AttributeError(key)
-        try:
+        if(key in self.keys()):
             return self[key]
-        except KeyError:
+        else:
             raise AttributeError(key)
 
     def __setattr__(self, key, value):
@@ -236,7 +236,6 @@ class BenchmarkDict(defaultdict):
     def __repr__(self):
         return pp(self.to_dict(), False)
 
-    # Converts benchmakr dictionary to a normal dictionary
     def to_dict(self):
         outputDict = {}
         for key, value in self.items():
@@ -248,7 +247,6 @@ class BenchmarkDict(defaultdict):
             outputDict[key] = attr_dict_pair_value
         return outputDict
 
-    # Iterates through dictionary keys and converts them using get_dict_value_converted recursively 
     @staticmethod
     def from_dict(obj):
         attr_dict = BenchmarkDict()
@@ -257,7 +255,6 @@ class BenchmarkDict(defaultdict):
             attr_dict.__setattr__(key, attr_dict_pair_value)
         return attr_dict
 
-    # Gets converted value of anything (dict, str, list, etc.) for creation of dictionaries
     @staticmethod
     def get_dict_value_converted(value):
         attr_dict_pair_value = None

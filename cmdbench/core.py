@@ -11,7 +11,7 @@ import sys
 import tempfile
 import shlex
 
-def benchmark_command(command, iterations_num = 1, raw_output = False):
+def benchmark_command(command, iterations_num = 1, raw_data = False):
     if(iterations_num <= 0):
         raise Exception("The number of iterations to run the command should be >= 1")
     if(iterations_num <= 0):
@@ -19,65 +19,74 @@ def benchmark_command(command, iterations_num = 1, raw_output = False):
 
     raw_benchmark_results = []
     for _ in range(iterations_num):
-        raw_benchmark_result = single_benchmark_command_raw(command, raw_output)
+        raw_benchmark_result = single_benchmark_command_raw(command)
         raw_benchmark_results.append(raw_benchmark_result)
     
-    final_benchmark_results = list(map(lambda raw_benchmark_result: raw_to_final_benchmark(raw_benchmark_result, raw_output), raw_benchmark_results))
+    final_benchmark_results = list(map(lambda raw_benchmark_result: raw_benchmark_result if raw_data else raw_to_final_benchmark(raw_benchmark_result), raw_benchmark_results))
 
     return BenchmarkResults(final_benchmark_results)
 
-# Uses raw_to_final_benchmark to get, compile and format 
-# the most chosen accurate info from /user/bin/time and psutil library.
+# Uses benchmark_command_raw and raw_to_final_benchmark to get, compile and format 
+# the most accurate info from /user/bin/time and psutil library 
+#
+# For reasoning of choosing the right tool (either GNU time or psutil) for each
+# resource (CPU, memory and disk usage) refer to the ipython notebook in the repository
 
-def raw_to_final_benchmark(benchmark_raw_dict, raw_output = False):
-    if(raw_output): # Just return all of the collected data if is in raw_output mode
-        return benchmark_raw_dict
+def raw_to_final_benchmark(benchmark_raw_dict):
+
+    process_stdout_data = benchmark_raw_dict["general"]["stdout_data"]
+    process_stderr_data = benchmark_raw_dict["general"]["stderr_data"]
+    process_execution_time = benchmark_raw_dict["psutil"]["process"]["execution_time"]
+
+
+    cpu_user_time = benchmark_raw_dict["psutil"]["cpu"]["user_time"]
+    cpu_system_time = benchmark_raw_dict["psutil"]["cpu"]["system_time"]
+    cpu_total_time = cpu_user_time + cpu_system_time
+
+
+    memory_max = benchmark_raw_dict["psutil"]["memory"]["max"]
+    memory_max_perprocess = benchmark_raw_dict["psutil"]["memory"]["max_perprocess"]
+
+
+    disk_read_bytes = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["read_bytes"]
+    disk_write_bytes = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["write_bytes"]
+    disk_total_bytes = disk_read_bytes + disk_write_bytes
+
+    disk_read_chars = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["read_chars"]
+    disk_write_chars = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["write_chars"]
+    disk_total_chars = disk_read_chars + disk_write_chars
+
+
+    time_series_sample_milliseconds = benchmark_raw_dict["time_series"]["sample_milliseconds"]
+    time_series_cpu_percentages = benchmark_raw_dict["time_series"]["cpu_percentages"]
+    time_series_memory_bytes = benchmark_raw_dict["time_series"]["memory_bytes"]
+
     benchmark_results = {
-        "cpu":
-        {
-            "user_time": benchmark_raw_dict["gnu_time_results"]["User time (seconds)"], # TODO
-            "user_time_psutil": benchmark_raw_dict["cpu"]["user_time"], # TODO
-            "system_time": benchmark_raw_dict["gnu_time_results"]["System time (seconds)"], # TODO
-            "system_time_psutil": benchmark_raw_dict["cpu"]["system_time"], # TODO
-            "total_time": benchmark_raw_dict["gnu_time_results"]["User time (seconds)"] + benchmark_raw_dict["gnu_time_results"]["System time (seconds)"], # TODO
-            "total_time_psutil": benchmark_raw_dict["cpu"]["user_time"] + benchmark_raw_dict["cpu"]["system_time"], # TODO
-            "utilization_percentage": benchmark_raw_dict["gnu_time_results"]["Percent of CPU this job got"]
-        },
-        "memory": 
-        {
-            "max": benchmark_raw_dict["memory"]["max"], # DONE
-            "max_perprocess": benchmark_raw_dict["memory"]["max_perprocess"], # DONE
-            "max_perprocess_psutil": benchmark_raw_dict["gnu_time_results"]["Maximum resident set size (kbytes)"] * 1024 # DONE
-        },
+        "process": { "stdout_data": process_stdout_data, "stderr_data": process_stderr_data, "execution_time": process_execution_time },
+        "cpu": { "user_time": cpu_user_time, "system_time": cpu_system_time, "total_time": cpu_total_time },
+        "memory": { "max": memory_max, "max_perprocess": memory_max_perprocess },
         "disk": 
         {
-            "io_counters": 
-            {
-                "total": 0, # TODO
-                "read": 0, # TODO
-                "write": 0 # TODO
-            }
-        },
-        "process":
-        {
-            "stdout_data": benchmark_raw_dict["process"]["stdout_data"], # DONE
-            "stderr_data": benchmark_raw_dict["process"]["stderr_data"], # DONE
-            "execution_time": benchmark_raw_dict["gnu_time_results"]["Elapsed (wall clock) time (h:mm:ss or m:ss)"], # DONE
-            "execution_time_psutil": benchmark_raw_dict["process"]["execution_time"] # TODO
+            "read_bytes": disk_read_bytes,
+            "write_bytes": disk_write_bytes,
+            "total_bytes": disk_total_bytes,
+            
+            "read_chars": disk_read_chars,
+            "write_chars": disk_write_chars,
+            "total_chars": disk_total_chars,
         },
         "time_series":
         {
-            "sample_milliseconds": benchmark_raw_dict["time_series"]["sample_milliseconds"], # DONE
-            "cpu_percentages": benchmark_raw_dict["time_series"]["cpu_percentages"], # DONE
-            "memory_bytes": benchmark_raw_dict["time_series"]["memory_bytes"] # DONE
+            "sample_milliseconds": time_series_sample_milliseconds,
+            "cpu_percentages": time_series_cpu_percentages,
+            "memory_bytes": time_series_memory_bytes
         }
     }
 
     return benchmark_results
 
-def calculate_time_series(time_series_dict):
+def collect_time_series(time_series_dict):
     
-    # Wait for the main process to tell us the pid for time command's child (target command)
     while(time_series_dict["target_process_pid"] == -1):
         pass
 
@@ -103,12 +112,11 @@ def calculate_time_series(time_series_dict):
 
             cpu_percentage = p.cpu_percent()
 
+            # http://grodola.blogspot.com/2016/02/psutil-4-real-process-memory-and-environ.html
             memory_usage_info = p.memory_info()
             memory_usage = memory_usage_info.rss
-
             memory_perprocess_max = max(memory_perprocess_max, memory_usage)
 
-            # Add children processes data
             current_children = p.children(recursive=True)
             for child in current_children:
                 with child.oneshot():
@@ -163,17 +171,27 @@ def single_benchmark_command_raw(command):
 
     # START: Initialization
 
-    # psutil: CPU and Disk
+    # CPU
     cpu_times = {}
+
+    # Memory
+    
+
+    # Disk
     disk_io_counters = {}
+
+    # Program outputs
+    process_output_lines = []
+    process_error_lines = []
 
     # Time series data
     sample_milliseconds = []
     cpu_percentages = []
     memory_values = []
 
+    # END: Initialization
+
     # Subprocess: For time series measurements
-    # We use separate processes for each type of info to make sure we captuare all the data we can
     manager = multiprocessing.Manager()
     time_series_dict_template = {
         "target_process_pid": -1,
@@ -184,10 +202,8 @@ def single_benchmark_command_raw(command):
         "memory_max": 0,
         "memory_perprocess_max": 0}
     time_series_dict = manager.dict(time_series_dict_template)
-    time_series_process = multiprocessing.Process(target=calculate_time_series, args=(time_series_dict, ))
+    time_series_process = multiprocessing.Process(target=collect_time_series, args=(time_series_dict, ))
     time_series_process.start()
-
-    # END: Initialization
 
     # Finally, run the command
     time_process = psutil.Popen(commands_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -212,20 +228,17 @@ def single_benchmark_command_raw(command):
             break
         
         # https://psutil.readthedocs.io/en/latest/#psutil.Process.oneshot
+        
+        # https://psutil.readthedocs.io/en/latest/#psutil.Process.oneshot
         with p.oneshot():
             try:
 
                 ## CPU
-
                 cpu_times = p.cpu_times()
                 
                 ## DISK
 
                 disk_io_counters = p.io_counters()
-
-                ## MEMORY
-
-                # http://grodola.blogspot.com/2016/02/psutil-4-real-process-memory-and-environ.html
 
                 
             except psutil.AccessDenied as access_denied_error:
@@ -250,9 +263,9 @@ def single_benchmark_command_raw(command):
     memory_values = time_series_dict["memory_values"]
 
     # https://psutil.readthedocs.io/en/latest/#psutil.Process.cpu_times
-    cpu_user_time = cpu_times.user
-    cpu_system_time = cpu_times.system
-    cpu_total_time = cpu_user_time + cpu_system_time + cpu_times.children_user + cpu_times.children_system
+    cpu_user_time = cpu_times.user + cpu_times.children_user
+    cpu_system_time = cpu_times.system + cpu_times.children_system
+    cpu_total_time = cpu_user_time + cpu_system_time
 
     # Decode and join all of the lines to a single string for stdout and stderr
     process_output_lines = list(map(lambda line: line.decode(sys.stdout.encoding), time_process.stdout.readlines()))
@@ -280,7 +293,7 @@ def single_benchmark_command_raw(command):
     f.close()
     os.remove(time_tmp_output_file)
     
-    # Convert lists to numpy array
+    # Convert deques to numpy array
     sample_milliseconds = np.array(sample_milliseconds)
     cpu_percentages = np.array(cpu_percentages)
     memory_values = np.array(memory_values)
@@ -382,9 +395,9 @@ def single_benchmark_command_raw(command):
         },
         "time_series":
         {
-            "sample_milliseconds": sample_milliseconds,
-            "cpu_percentages": cpu_percentages,
-            "memory_bytes": memory_values
+            "sample_milliseconds": np.array(sample_milliseconds),
+            "cpu_percentages": np.array(cpu_percentages),
+            "memory_bytes": np.array(memory_values)
         },
         "gnu_time_results": gnu_times_dict
     }
