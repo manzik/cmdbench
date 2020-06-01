@@ -11,7 +11,7 @@ import sys
 import tempfile
 import shlex
 
-def benchmark_command(command, iterations_num = 1, debugging = False):
+def benchmark_command(command, iterations_num = 1, raw_output = False):
     if(iterations_num <= 0):
         raise Exception("The number of iterations to run the command should be >= 1")
     if(iterations_num <= 0):
@@ -19,21 +19,18 @@ def benchmark_command(command, iterations_num = 1, debugging = False):
 
     raw_benchmark_results = []
     for _ in range(iterations_num):
-        raw_benchmark_result = single_benchmark_command_raw(command, debugging)
+        raw_benchmark_result = single_benchmark_command_raw(command, raw_output)
         raw_benchmark_results.append(raw_benchmark_result)
     
-    final_benchmark_results = list(map(lambda raw_benchmark_result: raw_to_final_benchmark(raw_benchmark_result, debugging), raw_benchmark_results))
+    final_benchmark_results = list(map(lambda raw_benchmark_result: raw_to_final_benchmark(raw_benchmark_result, raw_output), raw_benchmark_results))
 
     return BenchmarkResults(final_benchmark_results)
 
-# Uses benchmark_command_raw and raw_to_final_benchmark to get, compile and format 
-# the most accurate info from /user/bin/time and psutil library 
-#
-# For reasoning of choosing the right tool (either GNU time or psutil) for each
-# resource (CPU, memory and disk usage) refer to the ipython notebook in the repository
+# Uses raw_to_final_benchmark to get, compile and format 
+# the most chosen accurate info from /user/bin/time and psutil library.
 
-def raw_to_final_benchmark(benchmark_raw_dict, debugging = False):
-    if(debugging): # Just return all of the collected data if is in debugging mode
+def raw_to_final_benchmark(benchmark_raw_dict, raw_output = False):
+    if(raw_output): # Just return all of the collected data if is in raw_output mode
         return benchmark_raw_dict
     benchmark_results = {
         "cpu":
@@ -78,8 +75,9 @@ def raw_to_final_benchmark(benchmark_raw_dict, debugging = False):
 
     return benchmark_results
 
-def calculate_time_series(time_series_dict, debugging):
+def calculate_time_series(time_series_dict):
     
+    # Wait for the main process to tell us the pid for time command's child (target command)
     while(time_series_dict["target_process_pid"] == -1):
         pass
 
@@ -103,7 +101,6 @@ def calculate_time_series(time_series_dict, debugging):
         try:
             time_from_monitoring_start = current_milli_time() - execution_start
 
-
             cpu_percentage = p.cpu_percent()
 
             memory_usage_info = p.memory_info()
@@ -111,6 +108,7 @@ def calculate_time_series(time_series_dict, debugging):
 
             memory_perprocess_max = max(memory_perprocess_max, memory_usage)
 
+            # Add children processes data
             current_children = p.children(recursive=True)
             for child in current_children:
                 with child.oneshot():
@@ -153,8 +151,7 @@ def calculate_time_series(time_series_dict, debugging):
     time_series_dict["memory_values"] = memory_values 
 
 # Performs benchmarking on the command based on both /usr/bin/time and psutil library
-# Debugging mode = false prevents from making calculations that are not going to be used in benchmark_command command
-def single_benchmark_command_raw(command, debugging = False):
+def single_benchmark_command_raw(command):
     
     # https://docs.python.org/3/library/shlex.html#shlex.split
     commands_list = shlex.split(command)
@@ -166,27 +163,17 @@ def single_benchmark_command_raw(command, debugging = False):
 
     # START: Initialization
 
-    # CPU
+    # psutil: CPU and Disk
     cpu_times = {}
-
-    # Memory
-    
-
-    # Disk
     disk_io_counters = {}
-
-    # Program outputs
-    process_output_lines = []
-    process_error_lines = []
 
     # Time series data
     sample_milliseconds = []
     cpu_percentages = []
     memory_values = []
 
-    # END: Initialization
-
     # Subprocess: For time series measurements
+    # We use separate processes for each type of info to make sure we captuare all the data we can
     manager = multiprocessing.Manager()
     time_series_dict_template = {
         "target_process_pid": -1,
@@ -197,8 +184,10 @@ def single_benchmark_command_raw(command, debugging = False):
         "memory_max": 0,
         "memory_perprocess_max": 0}
     time_series_dict = manager.dict(time_series_dict_template)
-    time_series_process = multiprocessing.Process(target=calculate_time_series, args=(time_series_dict, debugging, ))
+    time_series_process = multiprocessing.Process(target=calculate_time_series, args=(time_series_dict, ))
     time_series_process.start()
+
+    # END: Initialization
 
     # Finally, run the command
     time_process = psutil.Popen(commands_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -223,16 +212,12 @@ def single_benchmark_command_raw(command, debugging = False):
             break
         
         # https://psutil.readthedocs.io/en/latest/#psutil.Process.oneshot
-        
-        # https://psutil.readthedocs.io/en/latest/#psutil.Process.oneshot
         with p.oneshot():
             try:
 
                 ## CPU
 
-                # We will be using GNU Time's cpu times in production code and not psutil's
-                if(debugging):
-                    cpu_times = p.cpu_times()
+                cpu_times = p.cpu_times()
                 
                 ## DISK
 
@@ -263,10 +248,6 @@ def single_benchmark_command_raw(command, debugging = False):
     sample_milliseconds = time_series_dict["sample_milliseconds"]
     cpu_percentages = time_series_dict["cpu_percentages"]
     memory_values = time_series_dict["memory_values"]
-
-    #print((exection_end - execution_start) / 1000)
-    #print(list(map(lambda line: line.decode(sys.stdout.encoding), time_process.stdout.readlines())))
-    #print(cpu_times)
 
     # https://psutil.readthedocs.io/en/latest/#psutil.Process.cpu_times
     cpu_user_time = cpu_times.user
@@ -299,7 +280,7 @@ def single_benchmark_command_raw(command, debugging = False):
     f.close()
     os.remove(time_tmp_output_file)
     
-    # Convert deques to numpy array
+    # Convert lists to numpy array
     sample_milliseconds = np.array(sample_milliseconds)
     cpu_percentages = np.array(cpu_percentages)
     memory_values = np.array(memory_values)
