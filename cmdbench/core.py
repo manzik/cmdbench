@@ -1,4 +1,5 @@
 from .utils import *
+from .result import *
 from collections import deque
 import multiprocessing
 import numpy as np
@@ -306,33 +307,33 @@ def single_benchmark_command_raw(command):
             gnu_times_dict[key] = float(value)
     
     # GNU Time output: For reference
-    """
-    {
-      'Average resident set size (kbytes)': 0,
-      'Average shared text size (kbytes)': 0,
-      'Average stack size (kbytes)': 0,
-      'Average total size (kbytes)': 0,
-      'Average unshared data size (kbytes)': 0,
-      'Command being timed': '"node --expose-gc test.js"',
-      'Elapsed (wall clock) time (h:mm:ss or m:ss)': 5.74,
-      'Exit status': 0,
-      'File system inputs': 0,
-      'File system outputs': 10240,
-      'Involuntary context switches': 91,
-      'Major (requiring I/O) page faults': 0,
-      'Maximum resident set size (kbytes)': 614304,
-      'Minor (reclaiming a frame) page faults': 740886,
-      'Page size (bytes)': 4096,
-      'Percent of CPU this job got': 178,
-      'Signals delivered': 0,
-      'Socket messages received': 0,
-      'Socket messages sent': 0,
-      'Swaps': 0,
-      'System time (seconds)': 0.76,
-      'User time (seconds)': 9.47,
-      'Voluntary context switches': 7585,
-    }
-    """
+    
+    # {
+    #   'Average resident set size (kbytes)': 0,
+    #   'Average shared text size (kbytes)': 0,
+    #   'Average stack size (kbytes)': 0,
+    #   'Average total size (kbytes)': 0,
+    #   'Average unshared data size (kbytes)': 0,
+    #   'Command being timed': '"node --expose-gc test.js"',
+    #   'Elapsed (wall clock) time (h:mm:ss or m:ss)': 5.74,
+    #   'Exit status': 0,
+    #   'File system inputs': 0,
+    #   'File system outputs': 10240,
+    #   'Involuntary context switches': 91,
+    #   'Major (requiring I/O) page faults': 0,
+    #   'Maximum resident set size (kbytes)': 614304,
+    #   'Minor (reclaiming a frame) page faults': 740886,
+    #   'Page size (bytes)': 4096,
+    #   'Percent of CPU this job got': 178,
+    #   'Signals delivered': 0,
+    #   'Socket messages received': 0,
+    #   'Socket messages sent': 0,
+    #   'Swaps': 0,
+    #   'System time (seconds)': 0.76,
+    #   'User time (seconds)': 9.47,
+    #   'Voluntary context switches': 7585,
+    # }
+    
 
     resource_usages = {
         "gnu_time": # Data collected from GNU Time
