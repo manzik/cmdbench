@@ -1,3 +1,4 @@
 bloom-filters
 *.ctx
 test-berkeleydb
+*.db
