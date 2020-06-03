@@ -1,0 +1,8 @@
+## Example config using berkeleyDB
+h: 1
+k: 17
+m: 74000000
+storage-engine: berkeleydb
+storage-config:
+  filename: test-berkeley.db
+  flag: "c" ## Change to 'r' for read-only access

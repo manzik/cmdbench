@@ -82,6 +82,8 @@ class BenchmarkStats:
             "min": self.min, "max": self.max
         }
 
+class BenchmarkingProcessError(Exception):
+    pass
 
 # https://stackoverflow.com/a/5998359
 current_milli_time = lambda: int(round(time.time() * 1000))

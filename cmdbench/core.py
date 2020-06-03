@@ -57,6 +57,10 @@ def raw_to_final_benchmark(benchmark_raw_dict):
     disk_write_chars = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["write_chars"]
     disk_total_chars = disk_read_chars + disk_write_chars
 
+    disk_read_count = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["read_count"]
+    disk_write_count = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["write_count"]
+    disk_total_count = disk_read_count + disk_write_count
+
 
     time_series_sample_milliseconds = benchmark_raw_dict["time_series"]["sample_milliseconds"]
     time_series_cpu_percentages = benchmark_raw_dict["time_series"]["cpu_percentages"]
@@ -89,7 +93,8 @@ def raw_to_final_benchmark(benchmark_raw_dict):
 def collect_time_series(time_series_dict):
     
     while(time_series_dict["target_process_pid"] == -1):
-        pass
+        if(time_series_dict["skip_benchmarking"]):
+            return
 
     p = psutil.Process(time_series_dict["target_process_pid"])
     execution_start = time_series_dict["execution_start"]
@@ -173,13 +178,10 @@ def single_benchmark_command_raw(command):
     # START: Initialization
 
     # CPU
-    cpu_times = {}
-
-    # Memory
+    cpu_times = None
     
-
     # Disk
-    disk_io_counters = {}
+    disk_io_counters = None
 
     # Program outputs
     process_output_lines = []
@@ -201,18 +203,26 @@ def single_benchmark_command_raw(command):
         "cpu_percentages": cpu_percentages, 
         "memory_values": memory_values,
         "memory_max": 0,
-        "memory_perprocess_max": 0}
+        "memory_perprocess_max": 0,
+        "skip_benchmarking": False
+    }
     time_series_dict = manager.dict(time_series_dict_template)
     time_series_process = multiprocessing.Process(target=collect_time_series, args=(time_series_dict, ))
     time_series_process.start()
 
+    # p is the target process to monitor
+    p = None
     # Finally, run the command
     time_process = psutil.Popen(commands_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     
-    # p is the target process to monitor
-    p = None
     # Wait for time to load the target process, then proceed
-    while(p is None):
+    while(p is None and not time_series_dict["skip_benchmarking"]):
+        
+        time_process_retcode = time_process.poll()
+        if(time_process_retcode != None or not time_process.is_running()):
+            time_series_dict["skip_benchmarking"] = True
+            break
+
         time_children = time_process.children(recursive=False)
         if(len(time_children) > 0):
             p = time_children[0]
@@ -220,9 +230,11 @@ def single_benchmark_command_raw(command):
     # While loop runs as long as the target command is running
     execution_start = current_milli_time()
     time_series_dict["execution_start"] = execution_start
-    time_series_dict["target_process_pid"] = p.pid
+
+    if not time_series_dict["skip_benchmarking"]:
+        time_series_dict["target_process_pid"] = p.pid
     
-    while(True):
+    while(True and not time_series_dict["skip_benchmarking"]):
         time_process_retcode = time_process.poll()
         # retcode would be None while subprocess is running
         if(time_process_retcode is not None or not p.is_running()):
@@ -263,10 +275,30 @@ def single_benchmark_command_raw(command):
     cpu_percentages = time_series_dict["cpu_percentages"]
     memory_values = time_series_dict["memory_values"]
 
-    # https://psutil.readthedocs.io/en/latest/#psutil.Process.cpu_times
-    cpu_user_time = cpu_times.user + cpu_times.children_user
-    cpu_system_time = cpu_times.system + cpu_times.children_system
+    cpu_user_time = 0
+    cpu_system_time = 0
+
+    if(cpu_times is not None):
+        # https://psutil.readthedocs.io/en/latest/#psutil.Process.cpu_times
+        cpu_user_time = cpu_times.user + cpu_times.children_user
+        cpu_system_time = cpu_times.system + cpu_times.children_system
+    
     cpu_total_time = cpu_user_time + cpu_system_time
+
+    psutil_read_bytes = 0
+    psutil_write_bytes = 0
+    psutil_read_count = 0
+    psutil_write_count = 0
+    psutil_read_chars = 0
+    psutil_write_chars = 0
+
+    if(disk_io_counters is not None):
+        psutil_read_bytes = disk_io_counters.read_bytes
+        psutil_write_bytes = disk_io_counters.write_bytes
+        psutil_read_count = disk_io_counters.read_count
+        psutil_write_count = disk_io_counters.write_count
+        psutil_read_chars = disk_io_counters.read_chars
+        psutil_write_chars = disk_io_counters.write_chars
 
     # Decode and join all of the lines to a single string for stdout and stderr
     process_output_lines = list(map(lambda line: line.decode(sys.stdout.encoding), time_process.stdout.readlines()))
@@ -281,7 +313,7 @@ def single_benchmark_command_raw(command):
         if(len(tokens) < 2):
             continue
         key = tokens[0]
-        value = tokens[1]
+        value = tokens[1].replace("?", "0")
         gnu_times_dict[key] = value
     
     # We need a conversion for elapsed time from time format to seconds
@@ -375,12 +407,12 @@ def single_benchmark_command_raw(command):
             "disk": 
             {
                 "io_counters": {
-                    "read_bytes": disk_io_counters.read_bytes,
-                    "write_bytes": disk_io_counters.write_bytes,
-                    "read_count": disk_io_counters.read_count,
-                    "write_count": disk_io_counters.write_count,
-                    "read_chars": disk_io_counters.read_chars,
-                    "write_chars": disk_io_counters.write_chars
+                    "read_bytes": psutil_read_bytes,
+                    "write_bytes": psutil_write_bytes,
+                    "read_count": psutil_read_count,
+                    "write_count": psutil_write_count,
+                    "read_chars": psutil_read_chars,
+                    "write_chars": psutil_write_chars
                 }
             },
             "process":

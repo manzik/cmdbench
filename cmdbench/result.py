@@ -201,6 +201,7 @@ class BenchmarkResults():
         color = 'tab:green'
         ax_cpu = ax_memory.twinx()
         ax_cpu.set_ylabel('CPU (%)', color=color)
+        ax_cpu.set_ylim(bottom=0)
         ax_cpu.plot(x, cpu_y, color=color, alpha=0.75, linewidth=1)
         ax_cpu.tick_params(axis='y', labelcolor=color)
         #plt.fill_between(x, cpu_y, alpha=0.2, color=color)
