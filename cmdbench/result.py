@@ -15,7 +15,7 @@ class BenchmarkResults():
     def _has_one_iteration(self):
         return len(self.iterations) == 1
 
-    def add_benchmark_results(self, benchmark_result):
+    def add_benchmark_result(self, benchmark_result):
         self.iterations += benchmark_result.iterations
 
     def get_single_iteration(self):
