@@ -11,6 +11,9 @@ import psutil
 import sys
 import tempfile
 import shlex
+from sys import platform as _platform
+
+is_linux = _platform.startswith('linux')
 
 def benchmark_command(command, iterations_num = 1, raw_data = False):
     if(iterations_num <= 0):
@@ -53,9 +56,10 @@ def raw_to_final_benchmark(benchmark_raw_dict):
     disk_write_bytes = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["write_bytes"]
     disk_total_bytes = disk_read_bytes + disk_write_bytes
 
-    disk_read_chars = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["read_chars"]
-    disk_write_chars = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["write_chars"]
-    disk_total_chars = disk_read_chars + disk_write_chars
+    if(is_linux):
+        disk_read_chars = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["read_chars"]
+        disk_write_chars = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["write_chars"]
+        disk_total_chars = disk_read_chars + disk_write_chars
 
     disk_read_count = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["read_count"]
     disk_write_count = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["write_count"]
@@ -66,20 +70,22 @@ def raw_to_final_benchmark(benchmark_raw_dict):
     time_series_cpu_percentages = benchmark_raw_dict["time_series"]["cpu_percentages"]
     time_series_memory_bytes = benchmark_raw_dict["time_series"]["memory_bytes"]
 
+    disk_results = {
+        "read_bytes": disk_read_bytes,
+        "write_bytes": disk_write_bytes,
+        "total_bytes": disk_total_bytes
+    }
+
+    if is_linux:
+        disk_results["read_chars"] = disk_read_chars
+        disk_results["write_chars"] = disk_write_chars
+        disk_results["total_chars"] = disk_total_chars
+
     benchmark_results = {
         "process": { "stdout_data": process_stdout_data, "stderr_data": process_stderr_data, "execution_time": process_execution_time },
         "cpu": { "user_time": cpu_user_time, "system_time": cpu_system_time, "total_time": cpu_total_time },
         "memory": { "max": memory_max, "max_perprocess": memory_max_perprocess },
-        "disk": 
-        {
-            "read_bytes": disk_read_bytes,
-            "write_bytes": disk_write_bytes,
-            "total_bytes": disk_total_bytes,
-            
-            "read_chars": disk_read_chars,
-            "write_chars": disk_write_chars,
-            "total_chars": disk_total_chars,
-        },
+        "disk": disk_results,
         "time_series":
         {
             "sample_milliseconds": time_series_sample_milliseconds,
@@ -171,14 +177,15 @@ def collect_time_series(time_series_dict):
 
 # Performs benchmarking on the command based on both /usr/bin/time and psutil library
 def single_benchmark_command_raw(command):
-    
     # https://docs.python.org/3/library/shlex.html#shlex.split
     commands_list = shlex.split(command)
 
-    time_tmp_output_file = tempfile.mkstemp(suffix = '.temp')[1] # [1] for getting filename and not the file's stream
+    time_tmp_output_file = None
 
-    # Preprocessing: Wrap the target command around the time command
-    commands_list = ["/usr/bin/time", "-o", time_tmp_output_file, "-v"] + commands_list
+    if is_linux:
+        # Preprocessing: Wrap the target command around the GNU Time command
+        time_tmp_output_file = tempfile.mkstemp(suffix = '.temp')[1] # [1] for getting temporary filename and not the file's stream
+        commands_list = ["/usr/bin/time", "-o", time_tmp_output_file, "-v"] + commands_list
 
     # START: Initialization
 
@@ -216,37 +223,45 @@ def single_benchmark_command_raw(command):
     time_series_process = multiprocessing.Process(target=collect_time_series, args=(time_series_dict, ))
     time_series_process.start()
 
-    # p is the target process to monitor
+    # p is always the target process to monitor
     p = None
+
     # Finally, run the command
-    time_process = psutil.Popen(commands_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    # Master process could be GNU Time running target command or the target command itself
+    master_process = psutil.Popen(commands_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     
+    # Only in linux, we target command will be GNU Time's child process
+    # On other platforms, the main process will be the target process itself
+    if not is_linux:
+        p = master_process
+
+    # If we are using GNU Time and are on linux:
     # Wait for time to load the target process, then proceed
+    # Depending on whether we are on linux or not
     while(p is None and not time_series_dict["skip_benchmarking"]):
-        
-        time_process_retcode = time_process.poll()
-        if(time_process_retcode != None or not time_process.is_running()):
+
+        master_process_retcode = master_process.poll()
+        if(master_process_retcode != None or not master_process.is_running()):
             time_series_dict["skip_benchmarking"] = True
             break
 
-        time_children = time_process.children(recursive=False)
+        time_children = master_process.children(recursive=False)
         if(len(time_children) > 0):
             p = time_children[0]
 
-    # While loop runs as long as the target command is running
     execution_start = current_milli_time()
     time_series_dict["execution_start"] = execution_start
 
     if not time_series_dict["skip_benchmarking"]:
         time_series_dict["target_process_pid"] = p.pid
     
+    # While loop runs as long as the target command is running
+    master_process_retcode = None
     while(True and not time_series_dict["skip_benchmarking"]):
-        time_process_retcode = time_process.poll()
+        master_process_retcode = master_process.poll()
         # retcode would be None while subprocess is running
-        if(time_process_retcode is not None or not p.is_running()):
+        if(master_process_retcode is not None or not p.is_running()):
             break
-        
-        # https://psutil.readthedocs.io/en/latest/#psutil.Process.oneshot
         
         # https://psutil.readthedocs.io/en/latest/#psutil.Process.oneshot
         with p.oneshot():
@@ -303,46 +318,48 @@ def single_benchmark_command_raw(command):
         psutil_write_bytes = disk_io_counters.write_bytes
         psutil_read_count = disk_io_counters.read_count
         psutil_write_count = disk_io_counters.write_count
-        psutil_read_chars = disk_io_counters.read_chars
-        psutil_write_chars = disk_io_counters.write_chars
+        if(is_linux):
+            psutil_read_chars = disk_io_counters.read_chars
+            psutil_write_chars = disk_io_counters.write_chars
 
     # Decode and join all of the lines to a single string for stdout and stderr
-    process_output_lines = list(map(lambda line: line.decode(sys.stdout.encoding), time_process.stdout.readlines()))
-    process_error_lines = list(map(lambda line: line.decode(sys.stderr.encoding), time_process.stderr.readlines()))
+    process_output_lines = list(map(lambda line: line.decode(sys.stdout.encoding), master_process.stdout.readlines()))
+    process_error_lines = list(map(lambda line: line.decode(sys.stderr.encoding), master_process.stderr.readlines()))
 
-    # Read GNU Time command's output and parse it into a python dictionary
-    f = open(time_tmp_output_file, "r")
-    gnu_times_lines = list(map(lambda line: line.strip(), f.readlines()))
-    gnu_times_dict = {}
-    for gnu_times_line in gnu_times_lines:
-        tokens = list(map(lambda token: token.strip(), gnu_times_line.rsplit(": ", 1)))
-        if(len(tokens) < 2):
-            continue
-        key = tokens[0]
-        value = tokens[1].replace("?", "0")
-        gnu_times_dict[key] = value
-    
-    # We need a conversion for elapsed time from time format to seconds
-    gnu_time_elapsed_wall_clock_key = "Elapsed (wall clock) time (h:mm:ss or m:ss)"
-    gnu_times_dict[gnu_time_elapsed_wall_clock_key] = str(get_sec(gnu_times_dict[gnu_time_elapsed_wall_clock_key]))
-    # And another conversion for cpu utilization percentage string
-    gnu_time_job_cpu_percent = "Percent of CPU this job got"
-    gnu_times_dict[gnu_time_job_cpu_percent] = float(gnu_times_dict[gnu_time_job_cpu_percent].replace("%", ""))
-
-    f.close()
-    os.remove(time_tmp_output_file)
-    
     # Convert deques to numpy array
     sample_milliseconds = np.array(sample_milliseconds)
     cpu_percentages = np.array(cpu_percentages)
     memory_values = np.array(memory_values)
 
-    # Convert all gnu time output's int values to int and float values to float
-    for key, value in gnu_times_dict.items():
-        if(isint(value)):
-            gnu_times_dict[key] = int(value)
-        elif(isfloat(value)):
-            gnu_times_dict[key] = float(value)
+    if(is_linux):
+        # Read GNU Time command's output and parse it into a python dictionary
+        f = open(time_tmp_output_file, "r")
+        gnu_times_lines = list(map(lambda line: line.strip(), f.readlines()))
+        gnu_times_dict = {}
+        for gnu_times_line in gnu_times_lines:
+            tokens = list(map(lambda token: token.strip(), gnu_times_line.rsplit(": ", 1)))
+            if(len(tokens) < 2):
+                continue
+            key = tokens[0]
+            value = tokens[1].replace("?", "0")
+            gnu_times_dict[key] = value
+
+        # We need a conversion for elapsed time from time format to seconds
+        gnu_time_elapsed_wall_clock_key = "Elapsed (wall clock) time (h:mm:ss or m:ss)"
+        gnu_times_dict[gnu_time_elapsed_wall_clock_key] = str(get_sec(gnu_times_dict[gnu_time_elapsed_wall_clock_key]))
+        # And another conversion for cpu utilization percentage string
+        gnu_time_job_cpu_percent = "Percent of CPU this job got"
+        gnu_times_dict[gnu_time_job_cpu_percent] = float(gnu_times_dict[gnu_time_job_cpu_percent].replace("%", ""))
+
+        f.close()
+        os.remove(time_tmp_output_file)
+
+        # Convert all gnu time output's int values to int and float values to float
+        for key, value in gnu_times_dict.items():
+            if(isint(value)):
+                gnu_times_dict[key] = int(value)
+            elif(isfloat(value)):
+                gnu_times_dict[key] = float(value)
     
     # GNU Time output: For reference
     
@@ -372,10 +389,57 @@ def single_benchmark_command_raw(command):
     #   'Voluntary context switches': 7585,
     # }
     
+    io_counters = {
+                    "read_bytes": psutil_read_bytes,
+                    "write_bytes": psutil_write_bytes,
+                    "read_count": psutil_read_count,
+                    "write_count": psutil_write_count
+                }
+
+    if(is_linux):
+        io_counters["read_chars"] = psutil_read_chars
+        io_counters["write_chars"] = psutil_write_chars
 
     resource_usages = {
-        "gnu_time": # Data collected from GNU Time
+        "psutil": # Data collected from psutil
         {
+            "cpu": 
+            {
+                "total_time": cpu_total_time,
+                "user_time": cpu_user_time,
+                "system_time": cpu_system_time
+            },
+            "memory": 
+            {
+                "max": memory_max,
+                "max_perprocess": memory_perprocess_max,
+            },
+            "disk": 
+            {
+                "io_counters": io_counters
+            },
+            "process":
+            {
+                "execution_time": (exection_end - execution_start) / 1000 # milliseconds to seconds
+            }
+        },
+        "general": # Info independent from GNU Time and psutil
+        {
+            "stdout_data": "\n".join(process_output_lines),
+            "stderr_data": "\n".join(process_error_lines),
+            "exit_code": gnu_times_dict["Exit status"] if is_linux else master_process_retcode
+        },
+        "time_series":
+        {
+            "sample_milliseconds": np.array(sample_milliseconds),
+            "cpu_percentages": np.array(cpu_percentages),
+            "memory_bytes": np.array(memory_values)
+        },
+        
+    }
+
+    if(is_linux):
+        resource_usages["gnu_time"] = {
             "cpu": 
             {
                 "user_time": gnu_times_dict["User time (seconds)"],
@@ -396,49 +460,7 @@ def single_benchmark_command_raw(command):
             {
                 "execution_time": gnu_times_dict["Elapsed (wall clock) time (h:mm:ss or m:ss)"] # milliseconds to seconds
             }
-        },
-        "psutil": # Data collected from psutil
-        {
-            "cpu": 
-            {
-                "total_time": cpu_total_time,
-                "user_time": cpu_user_time,
-                "system_time": cpu_system_time
-            },
-            "memory": 
-            {
-                "max": memory_max,
-                "max_perprocess": memory_perprocess_max,
-            },
-            "disk": 
-            {
-                "io_counters": {
-                    "read_bytes": psutil_read_bytes,
-                    "write_bytes": psutil_write_bytes,
-                    "read_count": psutil_read_count,
-                    "write_count": psutil_write_count,
-                    "read_chars": psutil_read_chars,
-                    "write_chars": psutil_write_chars
-                }
-            },
-            "process":
-            {
-                "execution_time": (exection_end - execution_start) / 1000 # milliseconds to seconds
-            }
-        },
-        "general": # Info independent from GNU Time and psutil
-        {
-            "stdout_data": "\n".join(process_output_lines),
-            "stderr_data": "\n".join(process_error_lines),
-            "exit_code": gnu_times_dict["Exit status"]
-        },
-        "time_series":
-        {
-            "sample_milliseconds": np.array(sample_milliseconds),
-            "cpu_percentages": np.array(cpu_percentages),
-            "memory_bytes": np.array(memory_values)
-        },
-        "gnu_time_results": gnu_times_dict
-    }
+        }
+        resource_usages["gnu_time_results"] = gnu_times_dict
     
     return resource_usages

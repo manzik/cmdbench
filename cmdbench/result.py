@@ -8,21 +8,24 @@ except ImportError:
     matplotlib_available = False
 
 class BenchmarkResults():
-    _iterations = []
-    def __init__(self, iterations):
-        self._iterations = iterations
+    iterations = []
+    def __init__(self, iterations = []):
+        self.iterations = iterations
 
     def _has_one_iteration(self):
-        return len(self._iterations) == 1
+        return len(self.iterations) == 1
+
+    def add_benchmark_results(self, benchmark_result):
+        self.iterations += benchmark_result.iterations
 
     def get_single_iteration(self):
-        return BenchmarkDict.from_dict(self._iterations[0])
+        return BenchmarkDict.from_dict(self.iterations[0])
 
     def get_iterations(self):
-        return BenchmarkDict.from_dict(self._iterations)
+        return BenchmarkDict.from_dict(self.iterations)
 
     def get_values_per_attribute(self):
-        value_per_attribute_dict = self._get_values_per_attribute(self._iterations)
+        value_per_attribute_dict = self._get_values_per_attribute(self.iterations)
         return BenchmarkDict.from_dict(value_per_attribute_dict)
 
     # Gets of same-structured objects
@@ -52,7 +55,7 @@ class BenchmarkResults():
             else:
                 return BenchmarkStats(list_of_objects)
         
-        value_per_attribute_stats_dict = self._get_values_per_attribute(self._iterations, stats_replace_func)
+        value_per_attribute_stats_dict = self._get_values_per_attribute(self.iterations, stats_replace_func)
         return BenchmarkDict.from_dict(value_per_attribute_stats_dict)
 
     def get_averages(self):
@@ -70,7 +73,7 @@ class BenchmarkResults():
             else:
                 return np.hstack(np.array(list_of_objects)).mean()
         
-        value_per_attribute_avgs_dict = self._get_values_per_attribute(self._iterations, avg_replace_func)
+        value_per_attribute_avgs_dict = self._get_values_per_attribute(self.iterations, avg_replace_func)
         
         # Break down time series data to time_series_x_values and time_series_y_values
         averaged_time_series = {}
