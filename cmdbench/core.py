@@ -106,7 +106,10 @@ def collect_time_series(time_series_dict):
     memory_max = 0
 
     # Children that we are processing
-    monitoring_process_children = set()
+    # Set for faster "in" operation
+    monitoring_process_children_set = set()
+    # List for actual process access
+    monitoring_process_children = []
 
     while(True):
         # retcode would be None while subprocess is running
@@ -134,11 +137,13 @@ def collect_time_series(time_series_dict):
                     memory_perprocess_max = max(memory_perprocess_max, child_memory_usage)
                     # We need to get cpu_percentage() only for children existing for at list one iteration
                     # Calculate CPU usage for children we have been monitoring
-                    if(child in monitoring_process_children):
-                        cpu_percentage += child.cpu_percent()
-                    # Add children not already in our monitoring_process_children
-                    else:
-                        monitoring_process_children.add(child)
+                if(child in monitoring_process_children_set):
+                    child_cpu_usage = monitoring_process_children[monitoring_process_children.index(child)].cpu_percent()
+                    cpu_percentage += child_cpu_usage
+                # Add children not already in our monitoring_process_children
+                else:
+                    monitoring_process_children_set.add(child)
+                    monitoring_process_children.append(child)
 
             memory_max = max(memory_max, memory_usage)
 
@@ -188,9 +193,10 @@ def single_benchmark_command_raw(command):
     process_error_lines = []
 
     # Time series data
-    sample_milliseconds = []
-    cpu_percentages = []
-    memory_values = []
+    # We don't need fast read access, we need fast insertion so we use deque
+    sample_milliseconds = deque([])
+    cpu_percentages = deque([])
+    memory_values = deque([])
 
     # END: Initialization
 
