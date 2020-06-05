@@ -110,6 +110,8 @@ For a more comprehensive demonstration on how to use the library and the resourc
   - Methods:
     - `get_first_iteration()`
       Returns the first iteration result in the benchmark results object.
+    - `get_iterations()`
+      Returns the result for all of the iterations in the benchmark results object.
     - `get_values_per_attribute()`
       Returns object containing lists for each type of value over different iterations. 
     - `get_averages()`
