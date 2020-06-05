@@ -64,7 +64,7 @@ Could be helpful when you are trying to benchmark multiple commands that need to
 ...   new_benchmark_result = cmdbench.benchmark_command("stress --cpu 10 --timeout 5")
 ...   benchmark_results.add_benchmark_result(new_benchmark_result)
 ... 
->>> benchmark_results.get_average()
+>>> benchmark_results.get_averages()
 {
   'cpu': {
     'system_time': 0.012500000000000002,
