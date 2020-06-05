@@ -18,7 +18,7 @@ class BenchmarkResults():
     def add_benchmark_result(self, benchmark_result):
         self.iterations += benchmark_result.iterations
 
-    def get_single_iteration(self):
+    def get_first_iteration(self):
         return BenchmarkDict.from_dict(self.iterations[0])
 
     def get_iterations(self):
@@ -169,7 +169,7 @@ class BenchmarkResults():
 
         time_series_obj = None
         if(self._has_one_iteration()):
-            time_series_obj = self.get_single_iteration()
+            time_series_obj = self.get_first_iteration()
         else:
             time_series_obj = self.get_averages()
         

@@ -40,7 +40,7 @@ def raw_to_final_benchmark(benchmark_raw_dict):
 
     process_stdout_data = benchmark_raw_dict["general"]["stdout_data"]
     process_stderr_data = benchmark_raw_dict["general"]["stderr_data"]
-    process_execution_time = benchmark_raw_dict["psutil"]["process"]["execution_time"]
+    process_execution_time = benchmark_raw_dict["gnu_time"]["process"]["execution_time"] if is_linux else benchmark_raw_dict["psutil"]["process"]["execution_time"]
 
 
     cpu_user_time = benchmark_raw_dict["psutil"]["cpu"]["user_time"]
@@ -229,6 +229,7 @@ def single_benchmark_command_raw(command):
     # Finally, run the command
     # Master process could be GNU Time running target command or the target command itself
     master_process = psutil.Popen(commands_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    execution_start = current_milli_time()
     
     # Only in linux, we target command will be GNU Time's child process
     # On other platforms, the main process will be the target process itself
@@ -249,7 +250,6 @@ def single_benchmark_command_raw(command):
         if(len(time_children) > 0):
             p = time_children[0]
 
-    execution_start = current_milli_time()
     time_series_dict["execution_start"] = execution_start
 
     if not time_series_dict["skip_benchmarking"]:
@@ -285,9 +285,8 @@ def single_benchmark_command_raw(command):
             except Exception as e:
                 raise e
                 break
-    time_series_process.join()
-        
     exection_end = current_milli_time()
+    time_series_process.join()
 
     memory_max = time_series_dict["memory_max"]
     memory_perprocess_max = time_series_dict["memory_perprocess_max"]
