@@ -11,7 +11,6 @@ In case you need access to the latest code which is not marked as new release ve
 pip uninstall git+https://github.com/manzik/cmdbench.git#egg=cmdbench && pip install git+https://github.com/manzik/cmdbench.git#egg=cmdbench
 ```
 # Quick Start
-For a more comprehensive demonstration on how to use the library, check the provided [ipython notebook](benchmark-usage.ipynb). 
 ## Method 1: Simpler
 You can simply use the `benchmark_command` function to benchmark a command.
 Benchmarks the command `stress --cpu 10 --timeout 5` over 20 iterations. But prints only the first one from the benchmark results.
@@ -98,8 +97,10 @@ Could be helpful when you are trying to benchmark multiple commands that need to
   },
 }
 ```
+## IPython notebook
+For a more comprehensive demonstration on how to use the library and the resources plot, check the provided [ipython notebook](benchmark-usage.ipynb). 
 # Documentation
-### benchmark_command(command, iterations_num = 1, raw_data = False)
+### benchmark_command(command: str, iterations_num = 1, raw_data = False)
   - Arguments
     - command: Target command to process.
     - iterations_num: Number of times to measure the program's resources.
@@ -107,18 +108,18 @@ Could be helpful when you are trying to benchmark multiple commands that need to
   - Returns a BenchmarkResults object containing
 ### BenchmarkResults: Class
   - Methods:
-    - get_first_iteration()
+    - `get_first_iteration()`
       Returns the first iteration result in the benchmark results object.
-    - get_values_per_attribute()
+    - `get_values_per_attribute()`
       Returns object containing lists for each type of value over different iterations. 
-    - get_averages()
-      Returns the average for all types of value over different iterations.
-    - get_statistics()
+    - `get_averages()`
+      Returns the average for all types of value over different iterations. Also calculates the average of the time series data.
+    - `get_statistics()`
       Returns different statistics (mean, stdev, min, max) for all types of value over different iterations.
-    - get_resources_plot(width: int, height: int)
+    - `get_resources_plot(width: int, height: int)`
       Returns matplotlib figure object of CPU and Memory usage of target process over time which can be viewed in an ipython notebook or be saved to an image file.
-    - add_benchmark_result(adding_result: BenchmarkResults)
+    - `add_benchmark_result(adding_result: BenchmarkResults)`
       Adds another BenchmarkResults object's benchmark results iterations' data to the current object.
 ### BenchmarkDict: Class(defaultdict)
   A custom internal dictionary class used to represent the data for an iteration.
-  Data inside objects from this class are accessible through both dot notation (obj.key) and key access (obj["key"])
+  Data inside objects from this class are accessible through both dot notation `obj.key` and key access `obj["key"]`
