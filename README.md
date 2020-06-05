@@ -108,20 +108,20 @@ For a more comprehensive demonstration on how to use the library and the resourc
   - Returns a BenchmarkResults object containing
 ### BenchmarkResults: Class
   - Methods:
-    - `get_first_iteration()`
+    - `get_first_iteration()`  
       Returns the first iteration result in the benchmark results object.
-    - `get_iterations()`
+    - `get_iterations()`  
       Returns the result for all of the iterations in the benchmark results object.
-    - `get_values_per_attribute()`
+    - `get_values_per_attribute()`  
       Returns object containing lists for each type of value over different iterations. 
-    - `get_averages()`
+    - `get_averages()`  
       Returns the average for all types of value over different iterations. Also calculates the average of the time series data.
-    - `get_statistics()`
+    - `get_statistics()`  
       Returns different statistics (mean, stdev, min, max) for all types of value over different iterations.
-    - `get_resources_plot(width: int, height: int)`
+    - `get_resources_plot(width: int, height: int)`  
       Returns matplotlib figure object of CPU and Memory usage of target process over time which can be viewed in an ipython notebook or be saved to an image file.
-    - `add_benchmark_result(adding_result: BenchmarkResults)`
+    - `add_benchmark_result(adding_result: BenchmarkResults)`  
       Adds another BenchmarkResults object's benchmark results iterations' data to the current object.
 ### BenchmarkDict: Class(defaultdict)
-  A custom internal dictionary class used to represent the data for an iteration.
+  A custom internal dictionary class used to represent the data for an iteration.  
   Data inside objects from this class are accessible through both dot notation `obj.key` and key access `obj["key"]`
