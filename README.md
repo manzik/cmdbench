@@ -62,7 +62,7 @@ Could be helpful when you are trying to benchmark multiple commands that need to
 >>> for _ in range(20):
 ...   new_benchmark_result = cmdbench.benchmark_command("stress --cpu 10 --timeout 5")
 ...   benchmark_results.add_benchmark_result(new_benchmark_result)
-... 
+... # The for loop above is equivalent to: benchmark_results = cmdbench.benchmark_command("stress --cpu 10 --timeout 5", iterations_num = 20)
 >>> benchmark_results.get_averages()
 {
   'cpu': {
