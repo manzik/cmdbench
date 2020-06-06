@@ -2,6 +2,7 @@ from .utils import *
 from .result import *
 from collections import deque
 import multiprocessing
+import threading
 import numpy as np
 import sys
 import io
@@ -14,6 +15,7 @@ import shlex
 from sys import platform as _platform
 
 is_linux = _platform.startswith('linux')
+is_unix = is_linux or _platform == "darwin"
 
 def benchmark_command(command, iterations_num = 1, raw_data = False):
     if(iterations_num <= 0):
@@ -207,7 +209,7 @@ def single_benchmark_command_raw(command):
 
     # END: Initialization
 
-    # Subprocess: For time series measurements
+    
     manager = multiprocessing.Manager()
     time_series_dict_template = {
         "target_process_pid": -1,
@@ -219,9 +221,24 @@ def single_benchmark_command_raw(command):
         "memory_perprocess_max": 0,
         "skip_benchmarking": False
     }
-    time_series_dict = manager.dict(time_series_dict_template)
-    time_series_process = multiprocessing.Process(target=collect_time_series, args=(time_series_dict, ))
-    time_series_process.start()
+    try:
+        time_series_dict = manager.dict(time_series_dict_template)
+    except Exception as e:
+        pass
+
+    # Subprocess: For time series measurements
+
+    # We need a non-blocking method to capture essential info (disk usage, cpu times)
+    # and non-essential time-series info in parallel.
+    # So we use either multiprocessing or threading to achieve this
+
+    # Linux: Processes are faster than threads
+    # Windows: Both are as fast but processes take longer to start
+    if is_unix:
+        time_series_exec = multiprocessing.Process(target=collect_time_series, args=(time_series_dict, ))
+    else:
+        time_series_exec = threading.Thread(target=collect_time_series, args=(time_series_dict, ))
+    time_series_exec.start()
 
     # p is always the target process to monitor
     p = None
@@ -286,7 +303,7 @@ def single_benchmark_command_raw(command):
                 raise e
                 break
     exection_end = current_milli_time()
-    time_series_process.join()
+    time_series_exec.join()
 
     memory_max = time_series_dict["memory_max"]
     memory_perprocess_max = time_series_dict["memory_perprocess_max"]
