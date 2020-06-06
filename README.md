@@ -1,5 +1,6 @@
 # cmdbench
-A quick and easy benchmarking tool for any command's CPU, memory and disk usage. 
+A quick and easy benchmarking tool for any command's CPU, memory and disk usage.  
+This is a cross-platform library. But using the library on linux is generally recommended.
 ## Install
 To install the library from this github repository execute the following command in your terminal: 
 ```bash
@@ -125,3 +126,5 @@ For a more comprehensive demonstration on how to use the library and the resourc
 ### BenchmarkDict: Class(defaultdict)
   A custom internal dictionary class used to represent the data for an iteration.  
   Data inside objects from this class are accessible through both dot notation `obj.key` and key access `obj["key"]`
+## Note (Windows)
+When benchmarking on windows, you will need to wrap your main code around the `if __name__ == '__main__':` statement.
