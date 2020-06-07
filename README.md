@@ -122,7 +122,7 @@ For a more comprehensive demonstration on how to use the library and the resourc
     - `get_averages()`  
       Returns the average for all types of value over different iterations. Also calculates the average of the time series data.
     - `get_statistics()`  
-      Returns different statistics (mean, stdev, min, max) for all types of value over different iterations.
+      Returns different statistics (mean, stdev, min, max) for all types of values over different iterations.
     - `get_resources_plot(width: int, height: int)`  
       Returns matplotlib figure object of CPU and Memory usage of target process over time which can be viewed in an ipython notebook or be saved to an image file.
     - `add_benchmark_result(adding_result: BenchmarkResults)`  
