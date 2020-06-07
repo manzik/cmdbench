@@ -106,7 +106,10 @@ For a more comprehensive demonstration on how to use the library and the resourc
     - command: Target command to process.
     - iterations_num: Number of times to measure the program's resources.
     - raw_data: Whether or not to show all different info from different sources like psutil and GNU Time (if available).
-  - Returns a BenchmarkResults object containing
+  - Returns a BenchmarkResults object containing the related results.
+### benchmark_command_generator(command: str, interations_num = 1, raw_data = False)
+  - Returns a [generator](https://wiki.python.org/moin/Generators) object allowing you to obtain a BenchmarkResults after each iteration of benchmarking until done (useful for monitoring the progress and recieving benchmarking data on the go).
+  - Arguments: Same as benchmark_command
 ### BenchmarkResults: Class
   - Methods:
     - `get_first_iteration()`  
