@@ -14,6 +14,7 @@ setup(
         'psutil>=5.7.0', 
         'beeprint>=2.4.10', 
         'Click',
+        'tqdm'
     ],
     extras_require = {
         "resources_plotting":  ["matplotlib>=3.2.1"]
