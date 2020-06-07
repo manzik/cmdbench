@@ -1,5 +1,6 @@
 # cmdbench
 A quick and easy benchmarking tool for any command's CPU, memory and disk usage.  
+CLI and the library functionalities are both provided.
 This is a cross-platform library. But using the library on linux is generally recommended.
 ## Install
 To install the library from this github repository execute the following command in your terminal: 
