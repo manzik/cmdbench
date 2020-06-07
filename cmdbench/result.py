@@ -62,8 +62,6 @@ class BenchmarkResults():
 
         time_series_dict_key = "time_series"
 
-        
-        
         def avg_replace_func(list_of_objects, key_path):
             sample_data = list_of_objects[0]
             if(isinstance(sample_data, str)):
@@ -150,7 +148,6 @@ class BenchmarkResults():
 
                 time_series_y_values_out[key_y].append(avg_key_y)
 
-        
 
         # END: Average of the time series algorithm
 

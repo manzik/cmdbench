@@ -16,12 +16,11 @@ from sys import platform as _platform
 
 is_linux = _platform.startswith('linux')
 is_unix = is_linux or _platform == "darwin"
+is_win = os.name == 'nt'
 
 def benchmark_command(command, iterations_num = 1, raw_data = False):
     if(iterations_num <= 0):
         raise Exception("The number of iterations to run the command should be >= 1")
-    if(iterations_num <= 0):
-        raise Exception("The number of times to run the command per each iterations should be >= 1")
 
     raw_benchmark_results = []
     for _ in range(iterations_num):
@@ -31,6 +30,15 @@ def benchmark_command(command, iterations_num = 1, raw_data = False):
     final_benchmark_results = list(map(lambda raw_benchmark_result: raw_benchmark_result if raw_data else raw_to_final_benchmark(raw_benchmark_result), raw_benchmark_results))
 
     return BenchmarkResults(final_benchmark_results)
+
+def benchmark_command_generator(command, iterations_num = 1, raw_data = False):
+    if(iterations_num <= 0):
+        raise Exception("The number of iterations to run the command should be >= 1")
+
+    for _ in range(iterations_num):
+        raw_benchmark_result = single_benchmark_command_raw(command)
+        final_benchmark_result = raw_benchmark_result if raw_data else raw_to_final_benchmark(raw_benchmark_result)
+        yield BenchmarkResults([final_benchmark_result])
 
 # Uses benchmark_command_raw and raw_to_final_benchmark to get, compile and format 
 # the most accurate info from /user/bin/time and psutil library 
@@ -58,6 +66,7 @@ def raw_to_final_benchmark(benchmark_raw_dict):
     disk_write_bytes = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["write_bytes"]
     disk_total_bytes = disk_read_bytes + disk_write_bytes
 
+    # Only available on linux
     if(is_linux):
         disk_read_chars = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["read_chars"]
         disk_write_chars = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["write_chars"]
@@ -83,8 +92,10 @@ def raw_to_final_benchmark(benchmark_raw_dict):
         disk_results["write_chars"] = disk_write_chars
         disk_results["total_chars"] = disk_total_chars
 
+    exit_code = benchmark_raw_dict["general"]["exit_code"]
+
     benchmark_results = {
-        "process": { "stdout_data": process_stdout_data, "stderr_data": process_stderr_data, "execution_time": process_execution_time },
+        "process": { "stdout_data": process_stdout_data, "stderr_data": process_stderr_data, "execution_time": process_execution_time, "exit_code": exit_code },
         "cpu": { "user_time": cpu_user_time, "system_time": cpu_system_time, "total_time": cpu_total_time },
         "memory": { "max": memory_max, "max_perprocess": memory_max_perprocess },
         "disk": disk_results,
@@ -198,17 +209,11 @@ def single_benchmark_command_raw(command):
     disk_io_counters = None
 
     # Program outputs
-    process_output_lines = []
-    process_error_lines = []
+    process_output_lines, process_error_lines = [], []
 
     # Time series data
     # We don't need fast read access, we need fast insertion so we use deque
-    sample_milliseconds = deque([])
-    cpu_percentages = deque([])
-    memory_values = deque([])
-
-    # END: Initialization
-
+    sample_milliseconds, cpu_percentages, memory_values = deque([]), deque([]), deque([])
     
     manager = multiprocessing.Manager()
     time_series_dict_template = {
@@ -242,6 +247,8 @@ def single_benchmark_command_raw(command):
 
     # p is always the target process to monitor
     p = None
+
+    # END: Initialization
 
     # Finally, run the command
     # Master process could be GNU Time running target command or the target command itself
@@ -322,12 +329,9 @@ def single_benchmark_command_raw(command):
     
     cpu_total_time = cpu_user_time + cpu_system_time
 
-    psutil_read_bytes = 0
-    psutil_write_bytes = 0
-    psutil_read_count = 0
-    psutil_write_count = 0
-    psutil_read_chars = 0
-    psutil_write_chars = 0
+    psutil_read_bytes, psutil_write_bytes = 0, 0
+    psutil_read_count, psutil_write_count = 0, 0
+    psutil_read_chars, psutil_write_chars = 0, 0
 
     if(disk_io_counters is not None):
         psutil_read_bytes = disk_io_counters.read_bytes
