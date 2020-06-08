@@ -7,17 +7,26 @@ To install the library from this github repository execute the following command
 ```bash
 pip install git+https://github.com/manzik/cmdbench.git#egg=cmdbench
 ```
-## Reinstall
-In case you need access to the latest code which is not marked as new release version simply uninstall and install the package:
-```bash
-pip uninstall git+https://github.com/manzik/cmdbench.git#egg=cmdbench && pip install git+https://github.com/manzik/cmdbench.git#egg=cmdbench
-```
+# Table of contents
+   * [Quick Start: Command Line Interface](#quick-start-command-line-interface)
+   * [Quick Start: Library](#quick-start-library)
+      * [Method 1: Easier](#method-1-easier)
+      * [Method 2: More customizable](#method-2-more-customizable)
+      * [Usage IPython Notebook](#usage-ipython-notebook)
+   * [Documentation](#documentation)
+      * [benchmark_command: method](#benchmark_commandcommand-str-iterations_num--1-raw_data--false)
+      * [benchmark_command_generator: method](#benchmark_command_generatorcommand-str-interations_num--1-raw_data--false)
+      * [BenchmarkResults: Class](#benchmarkresults-class)
+      * [BenchmarkDict: Class](#benchmarkdict-classdefaultdict)
+   * [Notes](#notes)
+      * [Windows](#windows)
+      
 # Quick Start: Command Line Interface
 You can use the CLI interface provided by the python package to benchmark any command.  
 In the following demo, the command `node test.js` is being benchmarked 10 times, average of resources are being printed and a plot for the command's cpu and memory usage is being saved to the file `plot.png`.
 [![Usage demo](/resources/cmdbench.svg)](https://asciinema.org/a/25Juo57eeSrNVJPa7rJiokW78)
 # Quick Start: Library
-## Method 1: Simpler
+## Method 1: Easier
 You can simply use the `benchmark_command` function to benchmark a command.
 Benchmarks the command `stress --cpu 10 --timeout 5` over 20 iterations. But prints only the first one from the benchmark results.
 ```python
@@ -103,7 +112,7 @@ Could be helpful when you are trying to benchmark multiple commands that need to
   },
 }
 ```
-## IPython notebook
+## Usage IPython notebook
 For a more comprehensive demonstration on how to use the library and the resources plot, check the provided [ipython notebook](benchmark-usage.ipynb). 
 # Documentation
 ### benchmark_command(command: str, iterations_num = 1, raw_data = False)
@@ -134,5 +143,6 @@ For a more comprehensive demonstration on how to use the library and the resourc
 ### BenchmarkDict: Class(defaultdict)
   A custom internal dictionary class used to represent the data for an iteration.  
   Data inside objects from this class are accessible through both dot notation `obj.key` and key access `obj["key"]`
-## Note (Windows)
+# Notes
+## Windows
 When benchmarking on windows, you will need to wrap your main code around the `if __name__ == '__main__':` statement.
