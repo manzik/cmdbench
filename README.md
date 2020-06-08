@@ -26,9 +26,11 @@ You can use the CLI provided by the python package to benchmark any command.
 In the following demo, the command `node test.js` (a slightly modified version of [test.js](test.js)) is being benchmarked 10 times, average of resources are being printed and a plot for the command's cpu and memory usage is being saved to the file `plot.png`.
 [![Usage demo](/resources/cmdbench.svg)](https://asciinema.org/a/25Juo57eeSrNVJPa7rJiokW78)
 The output plot file `plot.png` for the demo will look like:
-![Resources plot](/resources/plot.png)
-# Quick Start: Library
-## Method 1: Easier
+![Resources plot](/resources/plot.png)  
+
+# Quick Start: Library  
+
+## Method 1: Easier  
 You can simply use the `benchmark_command` function to benchmark a command.
 Benchmarks the command `stress --cpu 10 --timeout 5` over 20 iterations. But prints only the first one from the benchmark results.
 ```python
@@ -69,7 +71,7 @@ Benchmarks the command `stress --cpu 10 --timeout 5` over 20 iterations. But pri
 >>> first_iteration_result.process.execution_time
 5.0
 ```
-## Method 2: More customizable
+## Method 2: More customizable  
 You can also create one or more BenchmarkResults objects, and add benchmark results to them over time.  
 So you are not forced to perform the benchmarking for the command consecutively when you simply can't.  
 Could be helpful when you are trying to benchmark multiple commands that need to be executed in a certain order consecutively or depend on each other.
@@ -114,19 +116,23 @@ Could be helpful when you are trying to benchmark multiple commands that need to
   },
 }
 ```
-## Usage IPython notebook
+## Usage IPython notebook  
 For a more comprehensive demonstration on how to use the library and the resources plot, check the provided [ipython notebook](benchmark-usage.ipynb). 
-# Documentation
-### benchmark_command(command: str, iterations_num = 1, raw_data = False)
+
+# Documentation  
+
+## benchmark_command(command: str, iterations_num = 1, raw_data = False)  
   - Arguments
     - command: Target command to process.
     - iterations_num: Number of times to measure the program's resources.
     - raw_data: Whether or not to show all different info from different sources like psutil and GNU Time (if available).
   - Returns a BenchmarkResults object containing the related results.
-### benchmark_command_generator(command: str, interations_num = 1, raw_data = False)
+
+## benchmark_command_generator(command: str, interations_num = 1, raw_data = False)
   - Arguments: Same as benchmark_command
   - Returns a [generator](https://wiki.python.org/moin/Generators) object allowing you to obtain a BenchmarkResults after each iteration of benchmarking until done (useful for monitoring the progress and recieving benchmarking data on the go).
-### BenchmarkResults: Class
+
+## BenchmarkResults: Class
   - Methods:
     - `get_first_iteration()`  
       Returns the first iteration result in the benchmark results object.
@@ -142,9 +148,12 @@ For a more comprehensive demonstration on how to use the library and the resourc
       Returns matplotlib figure object of CPU and Memory usage of target process over time which can be viewed in an ipython notebook or be saved to an image file.
     - `add_benchmark_result(adding_result: BenchmarkResults)`  
       Adds another BenchmarkResults object's benchmark results iterations' data to the current object.
-### BenchmarkDict: Class(defaultdict)
+
+## BenchmarkDict: Class(defaultdict)
   A custom internal dictionary class used to represent the data for an iteration.  
   Data inside objects from this class are accessible through both dot notation `obj.key` and key access `obj["key"]`
+
 # Notes
+
 ## Windows
 When benchmarking on windows, you will need to wrap your main code around the `if __name__ == '__main__':` statement.
