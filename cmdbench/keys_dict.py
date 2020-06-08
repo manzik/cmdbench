@@ -20,6 +20,7 @@ key_readables = {
     "read_chars": ["read (chars)"],
     "write_chars": ["write (chars)"],
     "total_chars": ["total (chars)"],
+    "other_bytes": ["other (bytes)"],
 
     "time_series": ["time series"],
     "sample_milliseconds": ["sampling milliseconds"],

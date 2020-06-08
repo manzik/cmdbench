@@ -39,7 +39,16 @@ async function main()
 		await sleep(WAIT_MS);
 		// FREE MEMORY (not reliable)
 		output = undefined;
-		global.gc();
+		try 
+		{
+			if(global.gc) 
+				global.gc();  
+		} 
+		catch (e)
+		{
+			console.error("Warning: Can't request garbage collection. It is better if you run the test nodejs file with --expose-gc as an arguemnt.");
+		}
+		
 		// WAIT 1 SEC
 		await sleep(WAIT_MS);
 		

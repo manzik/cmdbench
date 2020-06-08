@@ -91,6 +91,11 @@ def raw_to_final_benchmark(benchmark_raw_dict):
             disk_write_chars = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["write_chars"]
             disk_total_chars = disk_read_chars + disk_write_chars
 
+        # Only available on linux
+        if is_win:
+            disk_other_count = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["other_count"]
+            disk_other_bytes = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["other_bytes"]
+
         disk_read_count = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["read_count"]
         disk_write_count = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["write_count"]
         disk_total_count = disk_read_count + disk_write_count
@@ -105,6 +110,11 @@ def raw_to_final_benchmark(benchmark_raw_dict):
             disk_results["read_chars"] = disk_read_chars
             disk_results["write_chars"] = disk_write_chars
             disk_results["total_chars"] = disk_total_chars
+        
+        if is_win:
+            # Count is not really useful
+            # disk_results["other_count"] = disk_other_count
+            disk_results["other_bytes"] = disk_other_bytes
 
         benchmark_results["disk"] = disk_results
 
@@ -342,9 +352,12 @@ def single_benchmark_command_raw(command):
         psutil_write_bytes = disk_io_counters.write_bytes
         psutil_read_count = disk_io_counters.read_count
         psutil_write_count = disk_io_counters.write_count
-        if(is_linux):
+        if is_linux:
             psutil_read_chars = disk_io_counters.read_chars
             psutil_write_chars = disk_io_counters.write_chars
+        if is_win:
+            psutil_other_count = disk_io_counters.other_count
+            psutil_other_bytes = disk_io_counters.other_bytes
 
     # Decode and join all of the lines to a single string for stdout and stderr
     process_output_lines = list(map(lambda line: line.decode(sys.stdout.encoding), master_process.stdout.readlines()))
@@ -460,12 +473,17 @@ def single_benchmark_command_raw(command):
                     "write_count": psutil_write_count
                 }
 
-        if(is_linux):
+        if is_linux:
             io_counters["read_chars"] = psutil_read_chars
             io_counters["write_chars"] = psutil_write_chars
+
+        if is_win:
+            io_counters["other_count"] = psutil_other_count
+            io_counters["other_bytes"] = psutil_other_bytes
+
         resource_usages["psutil"]["disk"] = { "io_counters": io_counters }
 
-    if(is_linux):
+    if is_linux:
         resource_usages["gnu_time"] = {
             "cpu": 
             {
