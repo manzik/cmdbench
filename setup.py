@@ -8,6 +8,9 @@ setup(
     author_email='me@manzik.com',
     # Needed to actually package something
     packages=['cmdbench'],
+    keywords = ['benchmarks', 'benchmark', 'benchmarking', 'profiler', 'profiling', 
+                'timeit', 'time', 'runtime', 'performance', 'monitoring', 'monitor',
+                'cpu', 'memory', 'ram', 'disk'],
     # Needed for dependencies
     install_requires=[
         'numpy', 
@@ -24,12 +27,30 @@ setup(
     version='0.1',
     # The license can be anything you like
     license='MIT',
-    description='Quick and easy benchmarking for any command\'s CPU, memory and disk usage.',
+    description='Quick and easy benchmarking for any command\'s CPU, memory, disk usage and runtime.',
     entry_points={
         "console_scripts": [
             "cmdbench = cmdbench.cli:benchmark"
             ]
         },
+    classifiers=[
+        'Development Status :: 3 - Alpha',      # Chose either "3 - Alpha", "4 - Beta" or "5 - Production/Stable" as the current state of your package
+        'Intended Audience :: Science/Research',
+        'Intended Audience :: Developers',
+        'Intended Audience :: End Users/Desktop',
+        'Intended Audience :: Information Technology',
+        'Topic :: Software Development :: Testing',
+        'Topic :: System :: Benchmark',
+        'Topic :: Utilities',
+        'Operating System :: Unix',
+        'Operating System :: POSIX',
+        'Operating System :: Microsoft :: Windows',
+        'License :: OSI Approved :: MIT License',
+        'Programming Language :: Python :: 3',      #Specify which pyhton versions that you want to support
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+    ],
     # We will also need a readme eventually (there will be a warning)
     # long_description=open('README.txt').read(),
 )
