@@ -1,5 +1,11 @@
 from setuptools import setup
+from os import path
 import sys
+
+# Load github README.md for the long description
+this_directory = path.abspath(path.dirname(__file__))
+with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+    long_description = f.read()
 
 setup(
     # Needed to silence warnings (and to be a worthwhile package)
@@ -26,11 +32,12 @@ setup(
         "resources_plotting":  ["matplotlib>=3.2.1"]
     },
     # *strongly* suggested for sharing
-    version='0.1',
+    version='0.1.1',
     download_url='https://pypi.org/project/cmdbench/',
-    # The license can be anything you like
     license='MIT',
     description='Quick and easy benchmarking for any command\'s CPU, memory, disk usage and runtime.',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     entry_points={
         "console_scripts": [
             "cmdbench = cmdbench.cli:benchmark"
@@ -55,13 +62,8 @@ setup(
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
     ],
-    # We will also need a readme eventually (there will be a warning)
-    # long_description=open('README.txt').read(),
 )
 
 if __name__ == '__main__':
-    if sys.version_info[0] < 3:
-        raise Exception('Sorry, Python 2 is not supported.')
-        
     if sys.platform == "darwin":
         raise Exception('Sorry, macOS is not supported.\nIf you would like to use cmdbench on macOS, please create an issue at https://github.com/manzik/cmdbench/issues to request the feature.')
