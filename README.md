@@ -5,7 +5,7 @@ This library works on windows and linux. But using the library on linux is gener
 ## Install
 To install the library from this github repository execute the following command in your terminal: 
 ```bash
-pip install git+https://github.com/manzik/cmdbench.git#egg=cmdbench
+pip install cmdbench
 ```
 # Table of contents
    * [Quick Start: Command Line Interface](#quick-start-command-line-interface)
