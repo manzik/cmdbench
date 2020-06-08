@@ -6,7 +6,7 @@ setup(
     name='cmdbench',
     url='https://github.com/manzik/cmdbench',
     author='Mohsen Yousefian',
-    author_email='me@manzik.com',
+    author_email='contact@manzik.com',
     # Needed to actually package something
     packages=['cmdbench'],
     keywords = ['benchmarks', 'benchmark', 'benchmarking', 'profiler', 'profiling', 
@@ -27,6 +27,7 @@ setup(
     },
     # *strongly* suggested for sharing
     version='0.1',
+    download_url='https://pypi.org/project/cmdbench/',
     # The license can be anything you like
     license='MIT',
     description='Quick and easy benchmarking for any command\'s CPU, memory, disk usage and runtime.',
