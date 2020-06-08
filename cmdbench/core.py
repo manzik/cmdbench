@@ -305,10 +305,13 @@ def single_benchmark_command_raw(command):
                 break
             except psutil.NoSuchProcess as e:
                 # The process might end while we are measuring resources
+                # Then we didn't capture the final return code in the while loop, do it now
+                master_process_retcode = master_process.poll()
                 pass
             except Exception as e:
                 raise e
                 break
+    print(master_process_retcode)
     exection_end = current_milli_time()
     time_series_exec.join()
 
