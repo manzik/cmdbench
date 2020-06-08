@@ -29,7 +29,7 @@ setup(
     extras_require = {
         "resources_plotting":  ["matplotlib>=3.2.1"]
     },
-    version='0.1.3',
+    version='0.1.4',
     download_url='https://pypi.org/project/cmdbench/',
     license='MIT',
     description='Quick and easy benchmarking for any command\'s CPU, memory, disk usage and runtime.',
