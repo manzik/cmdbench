@@ -1,5 +1,6 @@
 # cmdbench
 A quick and easy benchmarking tool for any command's CPU, memory and disk usage.  
+CLI and the library functionalities are both provided.
 This is a cross-platform library. But using the library on linux is generally recommended.
 ## Install
 To install the library from this github repository execute the following command in your terminal: 
@@ -106,7 +107,10 @@ For a more comprehensive demonstration on how to use the library and the resourc
     - command: Target command to process.
     - iterations_num: Number of times to measure the program's resources.
     - raw_data: Whether or not to show all different info from different sources like psutil and GNU Time (if available).
-  - Returns a BenchmarkResults object containing
+  - Returns a BenchmarkResults object containing the related results.
+### benchmark_command_generator(command: str, interations_num = 1, raw_data = False)
+  - Arguments: Same as benchmark_command
+  - Returns a [generator](https://wiki.python.org/moin/Generators) object allowing you to obtain a BenchmarkResults after each iteration of benchmarking until done (useful for monitoring the progress and recieving benchmarking data on the go).
 ### BenchmarkResults: Class
   - Methods:
     - `get_first_iteration()`  
