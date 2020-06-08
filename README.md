@@ -23,7 +23,7 @@ pip install git+https://github.com/manzik/cmdbench.git#egg=cmdbench
       
 # Quick Start: Command Line Interface
 You can use the CLI interface provided by the python package to benchmark any command.  
-In the following demo, the command `node test.js` (a slightly edited version of [test.js](test.js)) is being benchmarked 10 times, average of resources are being printed and a plot for the command's cpu and memory usage is being saved to the file `plot.png`.
+In the following demo, the command `node test.js` (a slightly modified version of [test.js](test.js)) is being benchmarked 10 times, average of resources are being printed and a plot for the command's cpu and memory usage is being saved to the file `plot.png`.
 [![Usage demo](/resources/cmdbench.svg)](https://asciinema.org/a/25Juo57eeSrNVJPa7rJiokW78)
 # Quick Start: Library
 ## Method 1: Easier
