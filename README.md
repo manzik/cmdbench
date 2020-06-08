@@ -12,7 +12,11 @@ In case you need access to the latest code which is not marked as new release ve
 ```bash
 pip uninstall git+https://github.com/manzik/cmdbench.git#egg=cmdbench && pip install git+https://github.com/manzik/cmdbench.git#egg=cmdbench
 ```
-# Quick Start
+# Quick Start: Command Line Interface
+You can use the CLI interface provided by the python package to benchmark any command.  
+In the following demo, the command `node test.js` is being benchmarked 10 times, average of resources are being printed and a plot for the command's cpu and memory usage is being saved to the file `plot.png`.
+[![Usage demo](/resources/cmdbench.svg)](https://asciinema.org/a/25Juo57eeSrNVJPa7rJiokW78)
+# Quick Start: Library
 ## Method 1: Simpler
 You can simply use the `benchmark_command` function to benchmark a command.
 Benchmarks the command `stress --cpu 10 --timeout 5` over 20 iterations. But prints only the first one from the benchmark results.
