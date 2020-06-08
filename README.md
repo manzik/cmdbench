@@ -7,6 +7,7 @@ To install the library from this github repository execute the following command
 ```bash
 pip install cmdbench
 ```
+Python compatibility: >=3.5
 # Table of contents
    * [Quick Start: Command Line Interface](#quick-start-command-line-interface)
    * [Quick Start: Library](#quick-start-library)
