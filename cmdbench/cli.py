@@ -1,8 +1,9 @@
 from cmdbench.result import BenchmarkResults
-from cmdbench.utils import BenchmarkDict
+from cmdbench.utils import BenchmarkDict, PRINTING_PRECISION
 from cmdbench.core import benchmark_command_generator
 from cmdbench.keys_dict import key_readables
 from tqdm import tqdm
+import numbers
 import numpy as np
 import pkg_resources
 import click
@@ -144,7 +145,12 @@ def print_benchmark_dict_to_readable(bdict, indentation = 0):
 
             indent_line(indentation)
             click.secho(key_formatted, fg = "cyan", nl = False)
-            click.echo(": " + value.__repr__() + unit_str_final + "\n", nl = False)
+            final_value = None
+            if(isinstance(value, numbers.Number)):
+                final_value = str(round(value, PRINTING_PRECISION))
+            else:
+                final_value = value.__repr__()
+            click.echo(": " + final_value + unit_str_final + "\n", nl = False)
     click.echo()
 
 def indent_line(indentation):
