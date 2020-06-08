@@ -1,4 +1,5 @@
 from setuptools import setup
+import sys
 
 setup(
     # Needed to silence warnings (and to be a worthwhile package)
