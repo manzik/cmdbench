@@ -2,9 +2,7 @@ import time
 from collections import defaultdict
 import numpy as np
 from beeprint import pp
-import numbers
 
-PRINTING_PRECISION = 3
 
 # https://stackoverflow.com/a/41274937
 # Allows attribute access through both obj["key"] (internal library convenience) and obj.key (external developer convenience)
@@ -24,8 +22,7 @@ class BenchmarkDict(defaultdict):
         self[key] = value
 
     def __repr__(self):
-        self_dict = self.to_dict()
-        self_dict_formatted = pformat(self_dict, lambda val: round(val, PRINTING_PRECISION))
+        return pp(self.to_dict(), False)
 
     def to_dict(self):
         outputDict = {}
@@ -81,17 +78,12 @@ class BenchmarkStats:
         self.mean, self.stdev, self.min, self.max = mean_val, sd_val, min_val, max_val
     def __repr__(self):
         return "(mean: %(mean)s, stdev: %(stdev)s, min: %(min)s, max: %(max)s)" % {
-            "mean": round(self.mean, PRINTING_PRECISION), "stdev": round(self.stdev, PRINTING_PRECISION),
-            "min": round(self.min, PRINTING_PRECISION), "max": round(self.max, PRINTING_PRECISION)
+            "mean": self.mean, "stdev": self.stdev,
+            "min": self.min, "max": self.max
         }
 
-# https://stackoverflow.com/a/56048907
-def pformat(dictionary, function):
-    if isinstance(dictionary, dict):
-        return type(dictionary)((key, pformat(value, function)) for key, value in dictionary.items())
-    if isinstance(dictionary, numbers.Number):
-        return function(dictionary)
-    return dictionary
+class BenchmarkingProcessError(Exception):
+    pass
 
 # https://stackoverflow.com/a/5998359
 current_milli_time = lambda: int(round(time.time() * 1000))
