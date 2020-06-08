@@ -8,12 +8,10 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    # Needed to silence warnings (and to be a worthwhile package)
     name='cmdbench',
     url='https://github.com/manzik/cmdbench',
     author='Mohsen Yousefian',
     author_email='contact@manzik.com',
-    # Needed to actually package something
     packages=['cmdbench'],
     keywords = ['benchmarks', 'benchmark', 'benchmarking', 'profiler', 'profiling', 
                 'timeit', 'time', 'runtime', 'performance', 'monitoring', 'monitor',
@@ -31,8 +29,7 @@ setup(
     extras_require = {
         "resources_plotting":  ["matplotlib>=3.2.1"]
     },
-    # *strongly* suggested for sharing
-    version='0.1.1',
+    version='0.1.2',
     download_url='https://pypi.org/project/cmdbench/',
     license='MIT',
     description='Quick and easy benchmarking for any command\'s CPU, memory, disk usage and runtime.',
