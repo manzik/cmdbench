@@ -1,5 +1,5 @@
 from cmdbench.result import BenchmarkResults
-from cmdbench.utils import BenchmarkDict, PRINTING_PRECISION
+from cmdbench.utils import BenchmarkDict
 from cmdbench.core import benchmark_command_generator
 from cmdbench.keys_dict import key_readables
 from tqdm import tqdm
@@ -9,6 +9,8 @@ import pkg_resources
 import click
 import time
 import json
+
+PRINTING_PRECISION = 3
 
 __version__ = pkg_resources.require("cmdbench")[0].version
 @click.version_option(__version__)
@@ -52,22 +54,24 @@ def benchmark(command, iterations, **kwargs):
 
        Linux: cmdbench -i 5 "python -c \\"import time; time.sleep(2)\\""
        
-       Windows: cmdbench -i 5 -s "python -c ""import time; time.sleep(2)""\"
+       Windows: cmdbench -i 5 "python -c ""import time; time.sleep(2)""\"
        
        If no printing options are specified, statistics will be printed for more than 1 iterations, and the first iteration for only 1 iteration."""
 
     np.set_printoptions(threshold=15)
 
-    click.echo("Started benchmarking..")
+    click.echo("Benchmarking started..")
     benchmark_results = BenchmarkResults()
     benchmark_generator = benchmark_command_generator(" ".join(command), iterations)
     t = tqdm(range(iterations))
     for i in t:
         benchmark_result = next(benchmark_generator)
         benchmark_results.add_benchmark_result(benchmark_result)
-        t.set_description("Last runtime:  %s seconds" % benchmark_result.get_first_iteration().process.execution_time)
+        last_runtime = benchmark_result.get_first_iteration().process.execution_time
+        last_runtime = round(last_runtime, PRINTING_PRECISION)
+        t.set_description("Last runtime:  %s seconds" % last_runtime)
         t.refresh()
-    click.echo("Done benchmarking.")
+    click.echo("Benchmarking done.")
     click.echo()
 
     option_keys = ["print_statistics", "print_averages", "print_values", "print_first_iteration", "print_all_iterations"]
@@ -120,8 +124,26 @@ def print_benchmark_dict(bdict, title, title_fg_color = "green", indentation = 0
     click.secho(" " * indentation + "====> %s <====" % title + "\n", fg = title_fg_color, bold = True)
     print_benchmark_dict_to_readable(bdict, indentation)
 
+key_print_order = ["process", "cpu", "memory", "disk", "time_series"]
 def print_benchmark_dict_to_readable(bdict, indentation = 0):
-    for key, value in bdict.items():
+    
+    remaining_keys = list(bdict.keys())
+    while(len(remaining_keys) != 0):
+        # START: Figure out if the key is in the list of keys to be printed in a certain order
+        found_priority = False
+        target_key = remaining_keys[0]
+        for priority_key in key_print_order:
+            if priority_key in remaining_keys:
+                target_key = priority_key
+                found_priority = True
+                break
+        remaining_keys.remove(target_key)
+            
+        key = target_key
+        value = bdict[key]
+        # END: Figure out if the key is in the list of keys to be printed in a certain order
+
+
         key_readables_values = key_readables[key] if key in key_readables.keys() else None
 
         key_formatted = key if key_readables_values is None else key_readables_values[0]

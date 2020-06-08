@@ -13,10 +13,13 @@ key_readables = {
     "max": ["maximum"],
     "max_perprocess": ["maximum per process"],
 
-    "disk": ["disk", "bytes"],
-    "read_bytes": ["read"],
-    "write_bytes": ["write"],
-    "total_bytes": ["total"],
+    "disk": ["disk"],
+    "read_bytes": ["read (bytes)"],
+    "write_bytes": ["write (bytes)"],
+    "total_bytes": ["total (bytes)"],
+    "read_chars": ["read (chars)"],
+    "write_chars": ["write (chars)"],
+    "total_chars": ["total (chars)"],
 
     "time_series": ["time series"],
     "sample_milliseconds": ["sampling milliseconds"],
