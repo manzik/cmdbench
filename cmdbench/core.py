@@ -311,7 +311,6 @@ def single_benchmark_command_raw(command):
             except Exception as e:
                 raise e
                 break
-    print(master_process_retcode)
     exection_end = current_milli_time()
     time_series_exec.join()
 
@@ -348,6 +347,9 @@ def single_benchmark_command_raw(command):
     # Decode and join all of the lines to a single string for stdout and stderr
     process_output_lines = list(map(lambda line: line.decode(sys.stdout.encoding), master_process.stdout.readlines()))
     process_error_lines = list(map(lambda line: line.decode(sys.stderr.encoding), master_process.stderr.readlines()))
+    
+    # We're done with the process. Get return code and.
+    master_process.communicate()
 
     # Convert deques to numpy array
     sample_milliseconds = np.array(sample_milliseconds)
@@ -450,7 +452,7 @@ def single_benchmark_command_raw(command):
         {
             "stdout_data": "\n".join(process_output_lines),
             "stderr_data": "\n".join(process_error_lines),
-            "exit_code": gnu_times_dict["Exit status"] if is_linux else master_process_retcode
+            "exit_code": gnu_times_dict["Exit status"] if is_linux else master_process.returncode
         },
         "time_series":
         {
