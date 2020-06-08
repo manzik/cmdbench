@@ -42,13 +42,16 @@ __version__ = pkg_resources.require("cmdbench")[0].version
 ))
 def benchmark(command, iterations, **kwargs):
     """Performs CPU, memory and disk usage benchmarking on the target command.
-       Note: Make sure you write your command after writing the options.
+       Note: Make sure you enter your command after entering the options.
        
-       You can wrap your command around single or double quotations if it contains one or the other.
-       Replacing inner double quotations with \""" in windows and \\\" in linux.
-       For example in linux:
 
-       cmdbench -i 5 "node -e \\"setTimeout(()=>{console.log("done");}, 2000)\\""
+       You can wrap your command around single or double quotations if it contains one or the other.
+       Replacing inner double quotations with "" in windows and \\\" in linux.
+       For example:
+
+       Linux: cmdbench -i 5 "python -c \\"import time; time.sleep(2)\\""
+       
+       Windows: cmdbench -i 5 -s "python -c ""import time; time.sleep(2)""\"
        
        If no printing options are specified, statistics will be printed for more than 1 iterations, and the first iteration for only 1 iteration."""
 
@@ -81,21 +84,21 @@ def benchmark(command, iterations, **kwargs):
             kwargs["print_first_iteration"] = True
     
     if(kwargs["print_statistics"]):
-        click.echo(get_benchmark_dict(benchmark_results.get_statistics(), "Statistics"))
+        print_benchmark_dict(benchmark_results.get_statistics(), "Statistics")
 
     if(kwargs["print_averages"]):
-        click.echo(get_benchmark_dict(benchmark_results.get_averages(), "Averages"))
+        print_benchmark_dict(benchmark_results.get_averages(), "Averages")
 
     if(kwargs["print_values"]):
-        click.echo(get_benchmark_dict(benchmark_results.get_values_per_attribute(), "Values"))
+        print_benchmark_dict(benchmark_results.get_values_per_attribute(), "Values")
 
     if(kwargs["print_first_iteration"]):
-        click.echo(get_benchmark_dict(benchmark_results.get_first_iteration(), "First Iteration"))
+        print_benchmark_dict(benchmark_results.get_first_iteration(), "First Iteration")
 
     if(kwargs["print_all_iterations"]):
-        click.echo("====> %s <====" % "All Iterations")
+        click.secho("====> %s <====\n" % "All Iterations", fg="green")
         for ind, iteration in enumerate(benchmark_results.iterations):
-            click.echo(get_benchmark_dict(iteration, "Iteration #%s" % (ind + 1)))
+            print_benchmark_dict(BenchmarkDict.from_dict(iteration), "Iteration #%s" % (ind + 1), indentation = 4, title_fg_color="magenta")
 
     save_plot_value = kwargs["save_plot"]
     if(save_plot_value is not None):
@@ -112,14 +115,11 @@ def benchmark(command, iterations, **kwargs):
 
     click.echo("Done.")
 
-def get_benchmark_dict(bdict, title):
-    result = ""
-    result += "====> %s <====" % title + "\n\n"
-    result += benchmark_dict_to_readable(bdict)
-    return result
+def print_benchmark_dict(bdict, title, title_fg_color = "green", indentation = 0):
+    click.secho(" " * indentation + "====> %s <====" % title + "\n", fg = title_fg_color, bold = True)
+    print_benchmark_dict_to_readable(bdict, indentation)
 
-def benchmark_dict_to_readable(bdict, indentation = 0):
-    result = ""
+def print_benchmark_dict_to_readable(bdict, indentation = 0):
     for key, value in bdict.items():
         key_readables_values = key_readables[key] if key in key_readables.keys() else None
 
@@ -130,26 +130,31 @@ def benchmark_dict_to_readable(bdict, indentation = 0):
         is_bdict = isinstance(value, BenchmarkDict)
         unit_comes_before = is_bdict
 
-        unit_value_before =(" (%s)" % unit_str if unit_comes_before and len(unit_str) > 0 else "")
-        unit_value_after = (" %s" % unit_str if not unit_comes_before and len(unit_str) > 0 else "") + "\n"
+        val_is_bdict = isinstance(value, BenchmarkDict)
+        if(val_is_bdict):
+            unit_str_final = (" (%s)" % unit_str if len(unit_str) > 0 else "")
 
-        result += " " * indentation + key_formatted + unit_value_before + ": " + value_to_readable(value, indentation + 4) + unit_value_after
+            indent_line(indentation)
+            click.secho(key_formatted + unit_str_final, fg = "yellow", nl = False)
+            click.echo(": "  + "\n", nl = False)
 
-    return result
+            print_benchmark_dict_to_readable(value, indentation + 4)
+        else:
+            unit_str_final = (" " + unit_str  if len(unit_str) > 0 else "")
+
+            indent_line(indentation)
+            click.secho(key_formatted, fg = "cyan", nl = False)
+            click.echo(": " + value.__repr__() + unit_str_final + "\n", nl = False)
+    click.echo()
+
+def indent_line(indentation):
+    click.echo(" " * indentation, nl = False)
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         return json.JSONEncoder.default(self, obj)
-
-def value_to_readable(val, indentation):
-    result = None
-    if(isinstance(val, BenchmarkDict)):
-        result = " " * indentation + "\n" + benchmark_dict_to_readable(val, indentation)
-    else:
-        result = val.__repr__()
-    return  result
 
 if __name__ == "__main__":
     benchmark(prog_name='cmdbench')
