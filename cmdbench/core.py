@@ -15,7 +15,8 @@ import shlex
 from sys import platform as _platform
 
 is_linux = _platform.startswith('linux')
-is_unix = is_linux or _platform == "darwin"
+is_macos = _platform == "darwin"
+is_unix = is_linux or is_macos
 is_win = os.name == 'nt'
 
 def benchmark_command(command, iterations_num = 1, raw_data = False):
@@ -42,7 +43,7 @@ def benchmark_command_generator(command, iterations_num = 1, raw_data = False):
 
 # Uses benchmark_command_raw and raw_to_final_benchmark to get, compile and format 
 # the most accurate info from /user/bin/time and psutil library 
-#
+# 
 # For reasoning of choosing the right tool (either GNU time or psutil) for each
 # resource (CPU, memory and disk usage) refer to the ipython notebook in the repository
 
@@ -52,53 +53,25 @@ def raw_to_final_benchmark(benchmark_raw_dict):
     process_stderr_data = benchmark_raw_dict["general"]["stderr_data"]
     process_execution_time = benchmark_raw_dict["gnu_time"]["process"]["execution_time"] if is_linux else benchmark_raw_dict["psutil"]["process"]["execution_time"]
 
-
     cpu_user_time = benchmark_raw_dict["psutil"]["cpu"]["user_time"]
     cpu_system_time = benchmark_raw_dict["psutil"]["cpu"]["system_time"]
     cpu_total_time = cpu_user_time + cpu_system_time
 
-
     memory_max = benchmark_raw_dict["psutil"]["memory"]["max"]
     memory_max_perprocess = benchmark_raw_dict["psutil"]["memory"]["max_perprocess"]
-
-
-    disk_read_bytes = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["read_bytes"]
-    disk_write_bytes = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["write_bytes"]
-    disk_total_bytes = disk_read_bytes + disk_write_bytes
-
-    # Only available on linux
-    if(is_linux):
-        disk_read_chars = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["read_chars"]
-        disk_write_chars = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["write_chars"]
-        disk_total_chars = disk_read_chars + disk_write_chars
-
-    disk_read_count = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["read_count"]
-    disk_write_count = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["write_count"]
-    disk_total_count = disk_read_count + disk_write_count
-
 
     time_series_sample_milliseconds = benchmark_raw_dict["time_series"]["sample_milliseconds"]
     time_series_cpu_percentages = benchmark_raw_dict["time_series"]["cpu_percentages"]
     time_series_memory_bytes = benchmark_raw_dict["time_series"]["memory_bytes"]
 
-    disk_results = {
-        "read_bytes": disk_read_bytes,
-        "write_bytes": disk_write_bytes,
-        "total_bytes": disk_total_bytes
-    }
-
-    if is_linux:
-        disk_results["read_chars"] = disk_read_chars
-        disk_results["write_chars"] = disk_write_chars
-        disk_results["total_chars"] = disk_total_chars
-
     exit_code = benchmark_raw_dict["general"]["exit_code"]
+
+
 
     benchmark_results = {
         "process": { "stdout_data": process_stdout_data, "stderr_data": process_stderr_data, "execution_time": process_execution_time, "exit_code": exit_code },
         "cpu": { "user_time": cpu_user_time, "system_time": cpu_system_time, "total_time": cpu_total_time },
         "memory": { "max": memory_max, "max_perprocess": memory_max_perprocess },
-        "disk": disk_results,
         "time_series":
         {
             "sample_milliseconds": time_series_sample_milliseconds,
@@ -106,6 +79,34 @@ def raw_to_final_benchmark(benchmark_raw_dict):
             "memory_bytes": time_series_memory_bytes
         }
     }
+    # psutil io_counters() is not available on macos
+    if not is_macos:
+        disk_read_bytes = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["read_bytes"]
+        disk_write_bytes = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["write_bytes"]
+        disk_total_bytes = disk_read_bytes + disk_write_bytes
+
+        # Only available on linux
+        if(is_linux):
+            disk_read_chars = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["read_chars"]
+            disk_write_chars = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["write_chars"]
+            disk_total_chars = disk_read_chars + disk_write_chars
+
+        disk_read_count = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["read_count"]
+        disk_write_count = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["write_count"]
+        disk_total_count = disk_read_count + disk_write_count
+
+        disk_results = {
+        "read_bytes": disk_read_bytes,
+        "write_bytes": disk_write_bytes,
+        "total_bytes": disk_total_bytes
+        }
+
+        if is_linux:
+            disk_results["read_chars"] = disk_read_chars
+            disk_results["write_chars"] = disk_write_chars
+            disk_results["total_chars"] = disk_total_chars
+
+        benchmark_results["disk"] = disk_results
 
     return benchmark_results
 
@@ -296,7 +297,8 @@ def single_benchmark_command_raw(command):
                 
                 ## DISK
 
-                disk_io_counters = p.io_counters()
+                if not is_macos:
+                    disk_io_counters = p.io_counters()
 
                 
             except psutil.AccessDenied as access_denied_error:
@@ -414,16 +416,7 @@ def single_benchmark_command_raw(command):
     #   'Voluntary context switches': 7585,
     # }
     
-    io_counters = {
-                    "read_bytes": psutil_read_bytes,
-                    "write_bytes": psutil_write_bytes,
-                    "read_count": psutil_read_count,
-                    "write_count": psutil_write_count
-                }
-
-    if(is_linux):
-        io_counters["read_chars"] = psutil_read_chars
-        io_counters["write_chars"] = psutil_write_chars
+    
 
     resource_usages = {
         "psutil": # Data collected from psutil
@@ -438,10 +431,6 @@ def single_benchmark_command_raw(command):
             {
                 "max": memory_max,
                 "max_perprocess": memory_perprocess_max,
-            },
-            "disk": 
-            {
-                "io_counters": io_counters
             },
             "process":
             {
@@ -462,6 +451,19 @@ def single_benchmark_command_raw(command):
         },
         
     }
+
+    if not is_macos:
+        io_counters = {
+                    "read_bytes": psutil_read_bytes,
+                    "write_bytes": psutil_write_bytes,
+                    "read_count": psutil_read_count,
+                    "write_count": psutil_write_count
+                }
+
+        if(is_linux):
+            io_counters["read_chars"] = psutil_read_chars
+            io_counters["write_chars"] = psutil_write_chars
+        resource_usages["psutil"]["disk"] = { "io_counters": io_counters }
 
     if(is_linux):
         resource_usages["gnu_time"] = {
