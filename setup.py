@@ -21,6 +21,7 @@ setup(
         'tqdm',
         'colorama'
     ],
+    python_requires='>=3.5',
     extras_require = {
         "resources_plotting":  ["matplotlib>=3.2.1"]
     },
@@ -47,10 +48,11 @@ setup(
         'Operating System :: POSIX',
         'Operating System :: Microsoft :: Windows',
         'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python :: 3',      #Specify which pyhton versions that you want to support
-        'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
     ],
     # We will also need a readme eventually (there will be a warning)
     # long_description=open('README.txt').read(),
