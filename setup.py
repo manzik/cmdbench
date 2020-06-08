@@ -37,3 +37,6 @@ setup(
 if __name__ == '__main__':
     if sys.version_info[0] < 3:
         raise Exception('Sorry, Python 2 is not supported.')
+        
+    if sys.platform == "darwin":
+        raise Exception('Sorry, macOS is not supported.\nIf you would like to use cmdbench on macOS, please create an issue at https://github.com/manzik/cmdbench/issues to request the feature.')
