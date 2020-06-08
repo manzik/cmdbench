@@ -1,8 +1,8 @@
-from tqdm import tqdm
 from cmdbench.result import BenchmarkResults
 from cmdbench.utils import BenchmarkDict
 from cmdbench.core import benchmark_command_generator
 from cmdbench.keys_dict import key_readables
+from tqdm import tqdm
 import numpy as np
 import pkg_resources
 import click
@@ -40,14 +40,15 @@ __version__ = pkg_resources.require("cmdbench")[0].version
     allow_extra_args = True,
     allow_interspersed_args = False
 ))
-
 def benchmark(command, iterations, **kwargs):
     """Performs CPU, memory and disk usage benchmarking on the target command.
        Note: Make sure you write your command after writing the options.
        
-       You can wrap your command around single or double quotations if it contains one or the other. For example:
+       You can wrap your command around single or double quotations if it contains one or the other.
+       Replacing inner double quotations with \""" in windows and \\\" in linux.
+       For example in linux:
 
-       cmdbench -i 5 "node -e ""setTimeout(()=>{console.log("done");}, 2000)""\"
+       cmdbench -i 5 "node -e \\"setTimeout(()=>{console.log("done");}, 2000)\\""
        
        If no printing options are specified, statistics will be printed for more than 1 iterations, and the first iteration for only 1 iteration."""
 
