@@ -23,12 +23,10 @@ setup(
         'beeprint>=2.4.10', 
         'Click',
         'tqdm',
-        'colorama'
+        'colorama',
+        "matplotlib>=3.2.1"
     ],
     python_requires='>=3.5',
-    extras_require = {
-        "resources_plotting":  ["matplotlib>=3.2.1"]
-    },
     version='0.1.4',
     download_url='https://pypi.org/project/cmdbench/',
     license='MIT',

@@ -1,5 +1,6 @@
 from .utils import *
 from inspect import isfunction
+import math
 
 matplotlib_available = True
 try:
@@ -188,12 +189,22 @@ class BenchmarkResults():
         memory_y = results_memory_values
         cpu_y = results_cpu_percentages
 
+        # START: Rescale memory_y data to proper file size.
+        memory_y = memory_y.copy()
+        max_val = max(memory_y)
+        scales = ["Bytes", "KB", "MB", "GB", "TB", "PB"]
+        # Find out what power of 1024 the max measured ram is
+        bit_logs = math.floor(math.log(max_val, 1024))
+        memory_y /= 1024 ** bit_logs
+
+        # END:  Rescale memory_y data to proper file size.
+
 
         color = 'tab:blue'
         fig, ax_memory = plt.subplots()
         ax_memory.grid()
         ax_memory.set_xlabel('Milliseconds')
-        ax_memory.set_ylabel('Memory (Bytes)', color=color)
+        ax_memory.set_ylabel("Memory (%s)" % scales[bit_logs], color=color)
         ax_memory.plot(x, memory_y, color=color, alpha=0.8)
         ax_memory.tick_params(axis='y', labelcolor=color)
         plt.fill_between(x, memory_y, alpha=0.2, color=color)
@@ -207,7 +218,9 @@ class BenchmarkResults():
 
         #plt.tight_layout()
 
+        ## TODO: Uncomment after matplotlib v3.2.2 release
+
         # https://stackoverflow.com/a/31845332
-        plt.close(fig)
+        #plt.close(fig)
 
         return fig
