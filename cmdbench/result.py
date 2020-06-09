@@ -190,7 +190,7 @@ class BenchmarkResults():
         cpu_y = results_cpu_percentages
 
         # START: Rescale memory_y data to proper file size.
-        memory_y = memory_y.copy()
+        memory_y = memory_y.copy().astype("float")
         max_val = max(memory_y)
         scales = ["Bytes", "KB", "MB", "GB", "TB", "PB"]
         # Find out what power of 1024 the max measured ram is
