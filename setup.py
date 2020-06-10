@@ -27,7 +27,7 @@ setup(
         "matplotlib>=3.2.1"
     ],
     python_requires='>=3.5',
-    version='0.1.6',
+    version='0.1.7',
     download_url='https://pypi.org/project/cmdbench/',
     license='MIT',
     description='Quick and easy benchmarking for any command\'s CPU, memory, disk usage and runtime.',

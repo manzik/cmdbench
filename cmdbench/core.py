@@ -290,6 +290,9 @@ def single_benchmark_command_raw(command):
     if not time_series_dict["skip_benchmarking"]:
         time_series_dict["target_process_pid"] = p.pid
     
+    # If we were able to access the process info at least once without access denied error
+    had_permission = False
+
     # While loop runs as long as the target command is running
     master_process_retcode = None
     while(True and not time_series_dict["skip_benchmarking"]):
@@ -310,9 +313,22 @@ def single_benchmark_command_raw(command):
                 if not is_macos:
                     disk_io_counters = p.io_counters()
 
+                had_permission = True
                 
             except psutil.AccessDenied as access_denied_error:
-                print("Root access is needed for monitoring the target command.")
+                if is_linux:
+                    # On linux, we might get access denied simply because the process has ended
+                    # and the io file for that process doesn't exist anymore or is about to be deleted 
+                    # by the system and psutil tries to access that. We determine if we are safe by checking if
+                    # we were able to acccess pro process io file before or not.
+                    # It is an actual access denied error if we were not able to have access before.
+                    
+                    # os.path.exists and shell checks for pid existence all caused false positives and negatives
+
+                    if had_permission:
+                        continue
+                    
+                print("Access Denied. Root access is needed for monitoring the target command.")
                 raise access_denied_error
                 break
             except psutil.NoSuchProcess as e:
