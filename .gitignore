@@ -1,3 +1,9 @@
+tests/bioinformatics/input/
+bioinformatics/cobs/basic-test/cobs-data
+bioinformatics/cobs/basic-test/cobs
+bioinformatics/cobs/basic-test/input
+tests/bioinformatics/bigsi-data/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
