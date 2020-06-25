@@ -1,8 +1,10 @@
 tests/bioinformatics/input/
-bioinformatics/cobs/basic-test/cobs-data
-bioinformatics/cobs/basic-test/cobs
-bioinformatics/cobs/basic-test/input
+bioinformatics/cobs/compare-input-sizes/cobs-data
+bioinformatics/cobs/compare-input-sizes/cobs
+bioinformatics/cobs/compare-input-sizes/input
+bioinformatics/cobs/compare-input-sizes/example.cobs_compact
 tests/bioinformatics/bigsi-data/
+bioinformatics/cobs/compare-input-sizes/example.cobs_compact
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

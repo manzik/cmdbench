@@ -44,7 +44,6 @@ def get_last_n_lines(string, n):
     return "\n".join(string.split("\n")[-n:])
 
 def get_command_groups_usage(command_groups, subsamples, reset_func, benchmark_list_to_results):
-    reset_func()
     
     index_debug_output, query_debug_output = "", ""
 
@@ -91,7 +90,9 @@ def multi_cmdbench(command_groups, reset_func, benchmark_list_to_results, iterat
     for iteration in range(iterations):
         iteration_results = []
         for sample_size in sample_sizes:
-            sample_results, group_debug_str = get_command_groups_usage(command_groups, sampling_func(sample_size), reset_func, benchmark_list_to_results)
+            reset_func()
+            subsamples = sampling_func(sample_size)
+            sample_results, group_debug_str = get_command_groups_usage(command_groups, subsamples, reset_func, benchmark_list_to_results)
             iteration_results.append(sample_results)
             debug_str += group_debug_str
         iterations_results.append(iteration_results)
