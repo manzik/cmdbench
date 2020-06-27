@@ -2,6 +2,17 @@ from inspect import isfunction
 import cmdbench
 import matplotlib.pyplot as plt
 
+""" 
+Command object options:
+
+The parallel function will be used if "is_parallel" is set to true, or "parallel_argfiles" or "parallel_args" is specified.
+
+"is_parallel": Boolean; Forcefully disables or enables the use of parallel function
+"command": String; String or a function returning the string function(samples)
+"parallel_argfiles": List; Array of files to provide to the parallel function (after :::)
+"parallel_args": String; Parameters to use before the command ("parallel [args] <target_command> ::: files")
+"""
+
 def get_results_from_benchmarks_list(benchmark_firsts_list):
     return {
         "memory": max(list(map(lambda result: result.memory.max, benchmark_firsts_list))),
@@ -56,27 +67,47 @@ def get_command_groups_usage(command_groups, subsamples, reset_func, benchmark_l
 
         benchmarking_commands = command_groups[key]
         for command_dict in benchmarking_commands:
-            final_benchmarking_command = ""
-            if(isfunction(command_dict["command"])):
-                final_benchmarking_command = command_dict["command"](subsamples)
+        
+            is_parallel = None
+            
+            if("use_parallel" in command_dict.keys()):
+                # Should use use_parallel if is present as user is trying to force parallel's usage state
+                is_parallel = command_dict["use_parallel"]
             else:
-                final_benchmarking_command += "parallel "
+                # Should use parallel if one of these options are present
+                is_parallel = len(list(set(["use_parallel", "parallel_args", "parallel_argfiles"]) & set(command_dict.keys()))) > 0
+            
+            for command_dict in benchmarking_commands:
+                final_benchmarking_command = ""
+                              
+                # The parallel command and it's options (arguments?)
+                if(is_parallel):
+                    final_benchmarking_command += "parallel "
                 if("parallel_args" in command_dict.keys()):
                     final_benchmarking_command += command_dict["parallel_args"] + " "
-                final_benchmarking_command += command_dict["command"]
-                final_benchmarking_command += " ::: "
-                if("argfiles" in command_dict.keys()):
-                    final_benchmarking_command += " ".join(command_dict["argfiles"])
+                # Command
+                if(isfunction(command_dict["command"])):
+                    final_benchmarking_command += command_dict["command"](subsamples)
                 else:
-                    final_benchmarking_command += " ".join(subsamples)
-            debug_str += (">>>>>>>>>>>>>") + "\n"
-            debug_str += (final_benchmarking_command) + "\n"
-            command_result = cmdbench.benchmark_command(final_benchmarking_command).get_first_iteration()
-            
-            debug_str += ("STDOUT: " + command_result.process.stdout_data) + "\n"
-            debug_str += ("STDERR: " + command_result.process.stderr_data) + "\n"
-            debug_str += ("<<<<<<<<<<<<<") + "\n"
-            commands_benchmark_list.append(command_result)
+                    final_benchmarking_command += command_dict["command"]
+                
+                # Argfiles if is using parallel
+                if(is_parallel):
+                    final_benchmarking_command += " ::: "
+                    if("parallel_argfiles" in command_dict.keys()):
+                        final_benchmarking_command += " ".join(command_dict["parallel_argfiles"])
+                    else:
+                        final_benchmarking_command += " ".join(subsamples)
+                
+                debug_str += (">>>>>>>>>>>>>") + "\n"
+                debug_str += (final_benchmarking_command) + "\n"
+                command_result = cmdbench.benchmark_command(final_benchmarking_command).get_first_iteration()
+                debug_str += ("STDOUT: " + command_result.process.stdout_data) + "\n"
+                debug_str += ("STDERR: " + command_result.process.stderr_data) + "\n"
+                debug_str += ("<<<<<<<<<<<<<") + "\n"
+                                  
+                commands_benchmark_list.append(command_result)
+                              
         commands_benchmark_results = benchmark_list_to_results(commands_benchmark_list)
 
         result_dict[key] = commands_benchmark_results
