@@ -69,6 +69,9 @@ def get_command_groups_usage(command_groups, subsamples, reset_func, benchmark_l
         for command_dict in benchmarking_commands:
         
             use_parallel = None
+
+            if("run_before" in command_dict.keys()):
+                command_dict["run_before"]()
             
             if("use_parallel" in command_dict.keys()):
                 # Should use use_parallel if is present as user is trying to force parallel's usage state
