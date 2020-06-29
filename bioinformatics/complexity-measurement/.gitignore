@@ -5,3 +5,5 @@ cobs/example.cobs_compact
 mash/sketches.msh
 mash/mash
 
+bigsi/bigsi-data
+bigsi/test-berkeley.db
