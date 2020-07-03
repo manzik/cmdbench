@@ -1,0 +1,13 @@
+snpdb_name escherichia_coli_1405waexk
+reference_genome 2011C-3609
+pg_uname postgres
+pg_pword DaPassword
+pg_host localhost
+depth_cutoff 10
+mq_cutoff 30
+ad_cutoff 0.9
+average_depth_cutoff 30
+mapper bwa
+mapper_threads 16
+variant_caller gatk
+variant_caller_threads 16

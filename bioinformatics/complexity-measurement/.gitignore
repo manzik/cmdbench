@@ -2,6 +2,13 @@ cobs/cobs-data
 cobs/cobs
 cobs/example.cobs_compact
 
+snapperdb/*.log
+snapperdb/*.jar
+snapperdb/*.tar
+snapperdb/snpdb/
+snapperdb/snapperdb/
+snapperdb/input/
+
 mash/sketches.msh
 mash/mash
 
