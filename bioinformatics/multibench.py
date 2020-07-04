@@ -1,6 +1,8 @@
 from inspect import isfunction
+import os
 import cmdbench
 import matplotlib.pyplot as plt
+import asciitable
 
 """ 
 Command object options:
@@ -54,7 +56,7 @@ def two_dimensional_samples_avg(dicts_2d_list):
 def get_last_n_lines(string, n):
     return "\n".join(string.split("\n")[-n:])
 
-def get_command_groups_usage(command_groups, subsamples, reset_func, benchmark_list_to_results):
+def get_command_groups_usage(command_groups, subsamples, reset_func, benchmark_list_to_results, active_output_print):
     
     index_debug_output, query_debug_output = "", ""
 
@@ -67,6 +69,8 @@ def get_command_groups_usage(command_groups, subsamples, reset_func, benchmark_l
 
         benchmarking_commands = command_groups[key]
         for command_dict in benchmarking_commands:
+
+            command_debug_str = ""
         
             use_parallel = None
 
@@ -99,13 +103,19 @@ def get_command_groups_usage(command_groups, subsamples, reset_func, benchmark_l
                     final_benchmarking_command += " ".join(command_dict["parallel_argfiles"])
                 else:
                     final_benchmarking_command += " ".join(subsamples)
-            debug_str += (">>>>>>>>>>>>>") + "\n"
-            debug_str += (final_benchmarking_command) + "\n"
+            command_debug_str += (">>>>>>>>>>>>>") + "\n"
+            command_debug_str += (final_benchmarking_command) + "\n"
             command_result = cmdbench.benchmark_command(final_benchmarking_command).get_first_iteration()
-            debug_str += ("STDOUT: " + command_result.process.stdout_data) + "\n"
-            debug_str += ("STDERR: " + command_result.process.stderr_data) + "\n"
-            debug_str += ("<<<<<<<<<<<<<") + "\n"
-                              
+            command_debug_str += ("STDOUT: " + command_result.process.stdout_data) + "\n"
+            command_debug_str += ("-------------\n")
+            command_debug_str += ("STDERR: " + command_result.process.stderr_data) + "\n"
+            command_debug_str += ("<<<<<<<<<<<<<") + "\n"
+
+            if(active_output_print):
+                print(command_debug_str)
+
+            debug_str += command_debug_str       
+                    
             commands_benchmark_list.append(command_result)
                               
         commands_benchmark_results = benchmark_list_to_results(commands_benchmark_list)
@@ -115,7 +125,7 @@ def get_command_groups_usage(command_groups, subsamples, reset_func, benchmark_l
     return result_dict, debug_str
 
 
-def multi_cmdbench(command_groups, reset_func, benchmark_list_to_results, iterations, sampling_func, sample_sizes):
+def multi_cmdbench(command_groups, reset_func, benchmark_list_to_results, iterations, sampling_func, sample_sizes, active_output_print = False):
     iterations_results = []
     debug_str = ""
     for iteration in range(iterations):
@@ -123,15 +133,18 @@ def multi_cmdbench(command_groups, reset_func, benchmark_list_to_results, iterat
         for sample_size in sample_sizes:
             reset_func()
             subsamples = sampling_func(sample_size)
-            sample_results, group_debug_str = get_command_groups_usage(command_groups, subsamples, reset_func, benchmark_list_to_results)
+            sample_results, group_debug_str = get_command_groups_usage(command_groups, subsamples, reset_func, benchmark_list_to_results, active_output_print)
             iteration_results.append(sample_results)
             debug_str += group_debug_str
         iterations_results.append(iteration_results)
     # iterations_results will be 2d array of iterations containing results for each sample size
     return two_dimensional_samples_avg(iterations_results), debug_str
 
-def plot_resources(results_arr, sample_sizes, key):
-    results = list(map(lambda result: result[key], results_arr))
+def plot_resources(results_arr, sample_sizes, key = None):
+    if(key is None):
+        results = results_arr
+    else:
+        results = list(map(lambda result: result[key], results_arr))
     print(results)
     
     memory_usages = list(map(lambda result: result["memory"], results))
@@ -168,3 +181,95 @@ def plot_resources(results_arr, sample_sizes, key):
     plt4.set_ylabel('Runtime', fontsize = 16)
     
     plt.suptitle(key, fontsize = 20)
+
+
+def save_multibench_results(multibench_results, samples_per_sample_size, save_path):
+    formatting_number_precision = 3
+    columns = ["Number of Samples", "Run time", "Memory", "Disk read", "Disk write", "List of Samples"]
+
+    
+
+    def number_formatter(num):
+        return round(num, formatting_number_precision)
+
+    extracting_keys = multibench_results[0].keys()
+
+    if os.path.exists(save_path):
+        os.remove(save_path)
+
+    for extracting_key in extracting_keys:
+        data_lists = []
+        for ind, multibench_result in enumerate(multibench_results):
+            samples = samples_per_sample_size[ind]
+            multibench_result_target = multibench_result[extracting_key]
+
+            row_list = [
+                len(samples),
+                number_formatter(multibench_result_target["runtime"]),
+                number_formatter(multibench_result_target["memory"]),
+                number_formatter(multibench_result_target["disk_read"]),
+                number_formatter(multibench_result_target["disk_write"]),
+                ", ".join(samples)
+            ]
+
+            data_lists.append(row_list)
+
+        with open(save_path, "a") as fstream:
+            fstream.write('->%s\n' % extracting_key)
+
+            asciitable.write(data_lists, fstream,
+                            names = columns,
+                            Writer = asciitable.FixedWidthTwoLine,
+                            bookend = True,
+                            delimiter = "|",
+                            quotechar = "'")
+
+def read_multibench_results(read_path):
+    sample_sizes = []
+    samples_per_sample_size = []
+
+    column_keys = [None, "runtime", "memory", "disk_read", "disk_write", None]
+
+    file1 = open(read_path, 'r') 
+    lines = file1.readlines() 
+
+    table_ind = -1
+    table_keys = []
+    tables = []
+
+    for line in lines:
+        if(line[:2] == "->"):
+            table_ind += 1
+
+            table_keys.append(line[2:-1])
+            tables.append([])
+        else:
+            tables[table_ind].append(line)
+
+    multibench_results_per_key = []
+    for table in tables:
+        key_multibench_results = []
+        raw_rows = asciitable.read(table, Reader=asciitable.FixedWidthTwoLine,
+                        bookend = True,
+                        delimiter = "|", 
+                        quotechar = "'")
+        raw_rows = list(raw_rows)
+        for raw_row in raw_rows:
+            multibench_result = {}
+            for ind, column_key in enumerate(column_keys):
+                if column_key is not None:
+                    multibench_result[column_key] = raw_row[ind]
+            sample_sizes.append(raw_row[0])
+            samples_per_sample_size.append(list(map(lambda word: word.strip(), raw_row[5].split(" "))))
+            key_multibench_results.append(multibench_result)
+
+        multibench_results_per_key.append(key_multibench_results)
+
+    multibench_results = []
+    for multibench_result_ind in range(len(multibench_results_per_key[0])):
+        multibench_result = {}
+        for key_ind, key_multibench_results in enumerate(multibench_results_per_key):
+            multibench_result[table_keys[key_ind]] = key_multibench_results[multibench_result_ind]
+        multibench_results.append(multibench_result)
+
+    return multibench_results, samples_per_sample_size
