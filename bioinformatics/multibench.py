@@ -1,8 +1,12 @@
 from inspect import isfunction
-import os
-import cmdbench
+from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
+import os, sys
 import asciitable
+
+# Import from parent folder's source code
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)) + "/..")
+import cmdbench
 
 """ 
 Command object options:
@@ -56,7 +60,7 @@ def two_dimensional_samples_avg(dicts_2d_list):
 def get_last_n_lines(string, n):
     return "\n".join(string.split("\n")[-n:])
 
-def get_command_groups_usage(command_groups, subsamples, reset_func, benchmark_list_to_results, active_output_print):
+def get_command_groups_usage(command_groups, subsamples, reset_func, benchmark_list_to_results, active_output_print, progress_bar):
     
     index_debug_output, query_debug_output = "", ""
 
@@ -69,8 +73,8 @@ def get_command_groups_usage(command_groups, subsamples, reset_func, benchmark_l
 
         benchmarking_commands = command_groups[key]
         for command_dict in benchmarking_commands:
-
-            command_debug_str = ""
+        
+            command_debug_strs = []
         
             use_parallel = None
 
@@ -103,20 +107,29 @@ def get_command_groups_usage(command_groups, subsamples, reset_func, benchmark_l
                     final_benchmarking_command += " ".join(command_dict["parallel_argfiles"])
                 else:
                     final_benchmarking_command += " ".join(subsamples)
-            command_debug_str += (">>>>>>>>>>>>>") + "\n"
-            command_debug_str += (final_benchmarking_command) + "\n"
-            command_result = cmdbench.benchmark_command(final_benchmarking_command).get_first_iteration()
-            command_debug_str += ("STDOUT: " + command_result.process.stdout_data) + "\n"
-            command_debug_str += ("-------------\n")
-            command_debug_str += ("STDERR: " + command_result.process.stderr_data) + "\n"
-            command_debug_str += ("<<<<<<<<<<<<<") + "\n"
-
+            
+            
+            command_debug_strs.append("")
+            command_debug_strs[0] += (">>>>>>>>>>>>>") + "\n"
+            command_debug_strs[0] += (final_benchmarking_command) + "\n"
+            
             if(active_output_print):
-                print(command_debug_str)
+                print(command_debug_strs[0])
+            command_result = cmdbench.benchmark_command(final_benchmarking_command).get_first_iteration()
+            
+            command_debug_strs.append("")
+            command_debug_strs[1] += ("STDOUT: " + command_result.process.stdout_data) + "\n"
+            command_debug_strs[1] += ("-------------\n")
+            command_debug_strs[1] += ("STDERR: " + command_result.process.stderr_data) + "\n"
+            command_debug_strs[1] += ("<<<<<<<<<<<<<") + "\n"
+            
+            if(active_output_print):
+                print(command_debug_strs[1])
 
-            debug_str += command_debug_str       
+            debug_str += "".join(command_debug_strs)   
                     
             commands_benchmark_list.append(command_result)
+            
                               
         commands_benchmark_results = benchmark_list_to_results(commands_benchmark_list)
 
@@ -125,17 +138,29 @@ def get_command_groups_usage(command_groups, subsamples, reset_func, benchmark_l
     return result_dict, debug_str
 
 
-def multi_cmdbench(command_groups, reset_func, benchmark_list_to_results, iterations, sampling_func, sample_sizes, active_output_print = False):
+def multi_cmdbench(command_groups, reset_func, benchmark_list_to_results, iterations, sampling_func, sample_sizes, active_output_print = False, progress_bar = True):
     iterations_results = []
     debug_str = ""
+
+    total_inner_loops = sum(sample_sizes) * iterations
+    if(progress_bar):
+        pbar = tqdm(total=total_inner_loops)
+        current_inner_loop = 0
+
     for iteration in range(iterations):
         iteration_results = []
         for sample_size in sample_sizes:
             reset_func()
             subsamples = sampling_func(sample_size)
-            sample_results, group_debug_str = get_command_groups_usage(command_groups, subsamples, reset_func, benchmark_list_to_results, active_output_print)
+            sample_results, group_debug_str = get_command_groups_usage(command_groups, subsamples, reset_func, benchmark_list_to_results, active_output_print, progress_bar)
             iteration_results.append(sample_results)
             debug_str += group_debug_str
+
+            if(progress_bar):
+                current_inner_loop += sample_size
+                pbar.n = current_inner_loop #check this
+                pbar.refresh() #check this
+
         iterations_results.append(iteration_results)
     # iterations_results will be 2d array of iterations containing results for each sample size
     return two_dimensional_samples_avg(iterations_results), debug_str

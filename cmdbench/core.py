@@ -293,14 +293,24 @@ def single_benchmark_command_raw(command):
     # If we were able to access the process info at least once without access denied error
     had_permission = False
 
+    outdata = ""
+    errdata = ""
+
     # While loop runs as long as the target command is running
     master_process_retcode = None
     while(True and not time_series_dict["skip_benchmarking"]):
+    
+        out, err = master_process.communicate()
+        out, err = out.decode(sys.stdout.encoding), err.decode(sys.stderr.encoding)
+        if(out != ''):
+            outdata += out
+        if(err != ''):
+            errdata += err
+    
         master_process_retcode = master_process.poll()
         # retcode would be None while subprocess is running
-        if(master_process_retcode is not None or not p.is_running()):
+        if(master_process_retcode is not None or not psutil.is_running()):
             break
-        
         # https://psutil.readthedocs.io/en/latest/#psutil.Process.oneshot
         with p.oneshot():
             try:
@@ -376,11 +386,8 @@ def single_benchmark_command_raw(command):
             psutil_other_bytes = disk_io_counters.other_bytes
 
     # Decode and join all of the lines to a single string for stdout and stderr
-    process_output_lines = list(map(lambda line: line.decode(sys.stdout.encoding), master_process.stdout.readlines()))
-    process_error_lines = list(map(lambda line: line.decode(sys.stderr.encoding), master_process.stderr.readlines()))
-    
-    # We're done with the process. Get return code and.
-    master_process.communicate()
+    process_output_lines = outdata.split("\n")
+    process_error_lines = errdata.split("\n")
 
     # Convert deques to numpy array
     sample_milliseconds = np.array(sample_milliseconds)

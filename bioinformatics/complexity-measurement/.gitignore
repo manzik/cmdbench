@@ -2,6 +2,8 @@ cobs/cobs-data
 cobs/cobs
 cobs/example.cobs_compact
 
+skesa/SKESA
+
 snapperdb/*.log
 snapperdb/*.jar
 snapperdb/*.tar
