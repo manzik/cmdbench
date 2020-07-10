@@ -120,19 +120,80 @@ def raw_to_final_benchmark(benchmark_raw_dict):
 
     return benchmark_results
 
-def collect_time_series(time_series_dict):
-    
-    while(time_series_dict["target_process_pid"] == -1):
-        if(time_series_dict["skip_benchmarking"]):
+def collect_fixed_data(shared_process_dict):
+    while(shared_process_dict["target_process_pid"] == -1):
+        if(shared_process_dict["skip_benchmarking"]):
             return
 
-    p = psutil.Process(time_series_dict["target_process_pid"])
-    execution_start = time_series_dict["execution_start"]
-    sample_milliseconds = time_series_dict["sample_milliseconds"]
-    cpu_percentages = time_series_dict["cpu_percentages"]
-    memory_values = time_series_dict["memory_values"]
+    p = psutil.Process(shared_process_dict["target_process_pid"])
 
-    memory_perprocess_max = 0; time_series_dict["memory_perprocess_max"]
+    # If we were able to access the process info at least once without access denied error
+    had_permission = False
+
+    # CPU
+    cpu_times = None
+    
+    # Disk
+    disk_io_counters = None
+
+    # While loop runs as long as the target command is running
+    while(True and not shared_process_dict["skip_benchmarking"]):
+        # retcode would be None while subprocess is running
+        if(not p.is_running()):
+            break
+        # https://psutil.readthedocs.io/en/latest/#psutil.Process.oneshot
+        with p.oneshot():
+            try:
+
+                ## CPU
+                cpu_times = p.cpu_times()
+                
+                ## DISK
+
+                if not is_macos:
+                    disk_io_counters = p.io_counters()
+
+                had_permission = True
+                
+            except psutil.AccessDenied as access_denied_error:
+                if is_linux:
+                    # On linux, we might get access denied simply because the process has ended
+                    # and the io file for that process doesn't exist anymore or is about to be deleted 
+                    # by the system and psutil tries to access that. We determine if we are safe by checking if
+                    # we were able to acccess pro process io file before or not.
+                    # It is an actual access denied error if we were not able to have access before.
+                    
+                    # os.path.exists and shell checks for pid existence all caused false positives and negatives
+
+                    if had_permission:
+                        continue
+                    
+                print("Access Denied. Root access is needed for monitoring the target command.")
+                raise access_denied_error
+                break
+            except psutil.NoSuchProcess as e:
+                # The process might end while we are measuring resources
+                pass
+            except Exception as e:
+                raise e
+                break
+
+    shared_process_dict["cpu_times"] = cpu_times
+    shared_process_dict["disk_io_counters"] = disk_io_counters
+
+def collect_time_series(shared_process_dict):
+    
+    while(shared_process_dict["target_process_pid"] == -1):
+        if(shared_process_dict["skip_benchmarking"]):
+            return
+
+    p = psutil.Process(shared_process_dict["target_process_pid"])
+    execution_start = shared_process_dict["execution_start"]
+    sample_milliseconds = shared_process_dict["sample_milliseconds"]
+    cpu_percentages = shared_process_dict["cpu_percentages"]
+    memory_values = shared_process_dict["memory_values"]
+
+    memory_perprocess_max = 0; shared_process_dict["memory_perprocess_max"]
     memory_max = 0
 
     # Children that we are processing
@@ -192,12 +253,12 @@ def collect_time_series(time_series_dict):
             raise e
             break
 
-    time_series_dict["memory_max"] = memory_max
-    time_series_dict["memory_perprocess_max"] = memory_perprocess_max
+    shared_process_dict["memory_max"] = memory_max
+    shared_process_dict["memory_perprocess_max"] = memory_perprocess_max
 
-    time_series_dict["sample_milliseconds"] = sample_milliseconds
-    time_series_dict["cpu_percentages"] = cpu_percentages
-    time_series_dict["memory_values"] = memory_values 
+    shared_process_dict["sample_milliseconds"] = sample_milliseconds
+    shared_process_dict["cpu_percentages"] = cpu_percentages
+    shared_process_dict["memory_values"] = memory_values 
 
 # Performs benchmarking on the command based on both /usr/bin/time and psutil library
 def single_benchmark_command_raw(command):
@@ -227,7 +288,7 @@ def single_benchmark_command_raw(command):
     sample_milliseconds, cpu_percentages, memory_values = deque([]), deque([]), deque([])
     
     manager = multiprocessing.Manager()
-    time_series_dict_template = {
+    shared_process_dict_template = {
         "target_process_pid": -1,
         "execution_start": -1, 
         "sample_milliseconds": sample_milliseconds, 
@@ -235,10 +296,12 @@ def single_benchmark_command_raw(command):
         "memory_values": memory_values,
         "memory_max": 0,
         "memory_perprocess_max": 0,
+        "disk_io_counters": disk_io_counters,
+        "cpu_times": cpu_times,
         "skip_benchmarking": False
     }
     try:
-        time_series_dict = manager.dict(time_series_dict_template)
+        shared_process_dict = manager.dict(shared_process_dict_template)
     except Exception as e:
         pass
 
@@ -251,10 +314,13 @@ def single_benchmark_command_raw(command):
     # Linux: Processes are faster than threads
     # Windows: Both are as fast but processes take longer to start
     if is_unix:
-        time_series_exec = multiprocessing.Process(target=collect_time_series, args=(time_series_dict, ))
+        time_series_exec = multiprocessing.Process(target = collect_time_series, args = (shared_process_dict, ))
+        fixed_data_exec = multiprocessing.Process(target = collect_fixed_data, args = (shared_process_dict, ))
     else:
-        time_series_exec = threading.Thread(target=collect_time_series, args=(time_series_dict, ))
+        time_series_exec = threading.Thread(target = collect_time_series, args = (shared_process_dict, ))
+        fixed_data_exec = threading.Thread(target = collect_fixed_data, args = (shared_process_dict, ))
     time_series_exec.start()
+    fixed_data_exec.start()
 
     # p is always the target process to monitor
     p = None
@@ -274,91 +340,48 @@ def single_benchmark_command_raw(command):
     # If we are using GNU Time and are on linux:
     # Wait for time to load the target process, then proceed
     # Depending on whether we are on linux or not
-    while(p is None and not time_series_dict["skip_benchmarking"]):
+
+    # Wait for /usr/bin/time to start the target command
+    while(p is None and not shared_process_dict["skip_benchmarking"]):
 
         master_process_retcode = master_process.poll()
         if(master_process_retcode != None or not master_process.is_running()):
-            time_series_dict["skip_benchmarking"] = True
+            shared_process_dict["skip_benchmarking"] = True
             break
 
         time_children = master_process.children(recursive=False)
         if(len(time_children) > 0):
             p = time_children[0]
 
-    time_series_dict["execution_start"] = execution_start
+    shared_process_dict["execution_start"] = execution_start
 
-    if not time_series_dict["skip_benchmarking"]:
-        time_series_dict["target_process_pid"] = p.pid
+    if not shared_process_dict["skip_benchmarking"]:
+        shared_process_dict["target_process_pid"] = p.pid
+        
+    # Wait for process to finish (time_series_exec and fixed_data_exec will be processing it in parallel)
+    outdata, errdata = master_process.communicate()
+    outdata, errdata = outdata.decode(sys.stdout.encoding), errdata.decode(sys.stderr.encoding)
     
-    # If we were able to access the process info at least once without access denied error
-    had_permission = False
-
-    outdata = ""
-    errdata = ""
-
-    # While loop runs as long as the target command is running
-    master_process_retcode = None
-    while(True and not time_series_dict["skip_benchmarking"]):
-    
-        out, err = master_process.communicate()
-        out, err = out.decode(sys.stdout.encoding), err.decode(sys.stderr.encoding)
-        if(out != ''):
-            outdata += out
-        if(err != ''):
-            errdata += err
-    
-        master_process_retcode = master_process.poll()
-        # retcode would be None while subprocess is running
-        if(master_process_retcode is not None or not psutil.is_running()):
-            break
-        # https://psutil.readthedocs.io/en/latest/#psutil.Process.oneshot
-        with p.oneshot():
-            try:
-
-                ## CPU
-                cpu_times = p.cpu_times()
-                
-                ## DISK
-
-                if not is_macos:
-                    disk_io_counters = p.io_counters()
-
-                had_permission = True
-                
-            except psutil.AccessDenied as access_denied_error:
-                if is_linux:
-                    # On linux, we might get access denied simply because the process has ended
-                    # and the io file for that process doesn't exist anymore or is about to be deleted 
-                    # by the system and psutil tries to access that. We determine if we are safe by checking if
-                    # we were able to acccess pro process io file before or not.
-                    # It is an actual access denied error if we were not able to have access before.
-                    
-                    # os.path.exists and shell checks for pid existence all caused false positives and negatives
-
-                    if had_permission:
-                        continue
-                    
-                print("Access Denied. Root access is needed for monitoring the target command.")
-                raise access_denied_error
-                break
-            except psutil.NoSuchProcess as e:
-                # The process might end while we are measuring resources
-                # Then we didn't capture the final return code in the while loop, do it now
-                master_process_retcode = master_process.poll()
-                pass
-            except Exception as e:
-                raise e
-                break
     exection_end = current_milli_time()
-    time_series_exec.join()
-
-    memory_max = time_series_dict["memory_max"]
-    memory_perprocess_max = time_series_dict["memory_perprocess_max"]
     
-    sample_milliseconds = time_series_dict["sample_milliseconds"]
-    cpu_percentages = time_series_dict["cpu_percentages"]
-    memory_values = time_series_dict["memory_values"]
+    # Done with the master process, wait for the parallel (threads or processes) to finish up
+    time_series_exec.join()
+    fixed_data_exec.join()
 
+
+    # Collect data from other (threads or processes) and store them
+    cpu_times = shared_process_dict["cpu_times"]
+    disk_io_counters = shared_process_dict["disk_io_counters"]
+
+    memory_max = shared_process_dict["memory_max"]
+    memory_perprocess_max = shared_process_dict["memory_perprocess_max"]
+    
+    sample_milliseconds = shared_process_dict["sample_milliseconds"]
+    cpu_percentages = shared_process_dict["cpu_percentages"]
+    memory_values = shared_process_dict["memory_values"]
+
+
+    # Calculate and store proper values for cpu and disk
     cpu_user_time = 0
     cpu_system_time = 0
 
@@ -385,15 +408,12 @@ def single_benchmark_command_raw(command):
             psutil_other_count = disk_io_counters.other_count
             psutil_other_bytes = disk_io_counters.other_bytes
 
-    # Decode and join all of the lines to a single string for stdout and stderr
-    process_output_lines = outdata.split("\n")
-    process_error_lines = errdata.split("\n")
-
-    # Convert deques to numpy array
+    # Convert deques to numpy arrays
     sample_milliseconds = np.array(sample_milliseconds)
     cpu_percentages = np.array(cpu_percentages)
     memory_values = np.array(memory_values)
 
+    # Collect info from GNU Time if it's linux
     if(is_linux):
         # Read GNU Time command's output and parse it into a python dictionary
         f = open(time_tmp_output_file, "r")
@@ -475,8 +495,8 @@ def single_benchmark_command_raw(command):
         },
         "general": # Info independent from GNU Time and psutil
         {
-            "stdout_data": "\n".join(process_output_lines),
-            "stderr_data": "\n".join(process_error_lines),
+            "stdout_data": outdata,
+            "stderr_data": errdata,
             "exit_code": gnu_times_dict["Exit status"] if is_linux else master_process.returncode
         },
         "time_series":

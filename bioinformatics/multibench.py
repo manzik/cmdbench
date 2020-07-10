@@ -138,7 +138,7 @@ def get_command_groups_usage(command_groups, subsamples, reset_func, benchmark_l
     return result_dict, debug_str
 
 
-def multi_cmdbench(command_groups, reset_func, benchmark_list_to_results, iterations, sampling_func, sample_sizes, active_output_print = False, progress_bar = True):
+def multi_cmdbench(command_groups, reset_func, benchmark_list_to_results, iterations, sampling_func, sample_sizes, active_output_print = False, progress_bar = False):
     iterations_results = []
     debug_str = ""
 
