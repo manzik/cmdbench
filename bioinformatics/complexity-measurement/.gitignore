@@ -4,6 +4,9 @@ cobs/example.cobs_compact
 
 skesa/SKESA
 
+sting/my_dbs
+sting/STing
+
 snapperdb/*.log
 snapperdb/*.jar
 snapperdb/*.tar
