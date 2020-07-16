@@ -218,9 +218,7 @@ class BenchmarkResults():
 
         #plt.tight_layout()
 
-        ## TODO: Uncomment after matplotlib v3.2.2 release
-
         # https://stackoverflow.com/a/31845332
-        #plt.close(fig)
+        plt.close(fig)
 
         return fig
