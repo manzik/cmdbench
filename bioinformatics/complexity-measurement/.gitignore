@@ -7,6 +7,9 @@ skesa/SKESA
 sting/my_dbs
 sting/STing
 
+mentalist/*.db*
+mentalist/campy_mlst_fasta_files
+
 snapperdb/*.log
 snapperdb/*.jar
 snapperdb/*.tar
