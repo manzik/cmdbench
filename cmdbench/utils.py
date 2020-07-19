@@ -82,9 +82,6 @@ class BenchmarkStats:
             "min": self.min, "max": self.max
         }
 
-class BenchmarkingProcessError(Exception):
-    pass
-
 # https://stackoverflow.com/a/5998359
 current_milli_time = lambda: int(round(time.time() * 1000))
 
@@ -120,7 +117,9 @@ def isint(x):
 def get_sec(time_str):
     secs = 0
     time_decimal = 0
-    time_decimal_start_ind = time_str.index(".")
+    time_decimal_start_ind = -1
+    if("." in time_str):
+      time_decimal_start_ind = time_str.index(".")
     if(time_decimal_start_ind > -1):
         time_decimal = float("0" + time_str[time_decimal_start_ind:])
     time_str = time_str[:time_decimal_start_ind]
