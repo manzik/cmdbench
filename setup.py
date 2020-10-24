@@ -63,4 +63,6 @@ setup(
 
 if __name__ == '__main__':
     if sys.platform == "darwin":
-        raise Exception('Sorry, macOS is not supported.\nIf you would like to use cmdbench on macOS, please create an issue at https://github.com/manzik/cmdbench/issues to request the feature.')
+        raise Exception('Sorry, cmdbench is supported only on the Linux operating system.\nIf you would like to use cmdbench on macOS, please create an issue at https://github.com/manzik/cmdbench/issues to request the feature.')
+    elif sys.platform == 'win32':
+        raise Exception('Sorry, cmdbench is supported only on the Linux operating system.\nIf you would like to use cmdbench on Windows, please create an issue at https://github.com/manzik/cmdbench/issues to request the feature.')
