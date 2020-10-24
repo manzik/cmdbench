@@ -1,7 +1,7 @@
 # CMDBench
 A quick and easy benchmarking tool for any command's CPU, memory and disk usage.  
 CLI and the library functionalities are both provided.  
-This library works on windows and linux. But using the library on linux is generally recommended.
+Note: This library is written in and maintained for the **Linux** operating system.
 ## Install
 To install the library from this github repository execute the following command in your terminal: 
 ```bash
