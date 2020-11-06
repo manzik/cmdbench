@@ -2,7 +2,7 @@
 A quick and easy benchmarking tool for any command's CPU, memory and disk usage.  
 CLI and the library functionalities are both provided.  
 
-Note: This library is written in and maintained for the **Linux** operating system.
+Note: This library is written in, heavily tested and maintained for the **Linux** operating system primarily. But **Windows** and **macOS** are also supported. Create an issue in case you run into a problem. 
 ## Install
 To install the library from this github repository execute the following command in your terminal: 
 ```bash

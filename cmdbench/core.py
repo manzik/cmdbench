@@ -5,11 +5,9 @@ import multiprocessing
 import threading
 import numpy as np
 import sys
-import io
 import os
 import subprocess
 import psutil
-import sys
 import tempfile
 import shlex
 from sys import platform as _platform
@@ -156,11 +154,11 @@ def collect_fixed_data(shared_process_dict):
                 had_permission = True
                 
             except psutil.AccessDenied as access_denied_error:
-                if is_linux:
-                    # On linux, we might get access denied simply because the process has ended
+                if is_unix:
+                    # On linux/macos, we might get access denied simply because the process has ended
                     # and the io file for that process doesn't exist anymore or is about to be deleted 
-                    # by the system and psutil tries to access that. We determine if we are safe by checking if
-                    # we were able to acccess pro process io file before or not.
+                    # by the system and psutil tries to access that, or we're dealing with a zombie process from here on. 
+                    # We determine if we are safe by checking if we were able to acccess pro process io file before or not.
                     # It is an actual access denied error if we were not able to have access before.
                     
                     # os.path.exists and shell checks for pid existence all caused false positives and negatives
@@ -202,6 +200,12 @@ def collect_time_series(shared_process_dict):
     # List for actual process access
     monitoring_process_children = []
 
+    # If we were able to access the process info at least once without access denied error
+    had_permission = False
+
+    # For macOS and Windows. Will be used for final user and system cpu time calculation
+    children_cpu_times = []
+
     while(True):
         # retcode would be None while subprocess is running
         if(not p.is_running()):
@@ -229,12 +233,17 @@ def collect_time_series(shared_process_dict):
                     # We need to get cpu_percentage() only for children existing for at list one iteration
                     # Calculate CPU usage for children we have been monitoring
                 if(child in monitoring_process_children_set):
-                    child_cpu_usage = monitoring_process_children[monitoring_process_children.index(child)].cpu_percent()
+                    child_index = monitoring_process_children.index(child)
+                    target_child_process = monitoring_process_children[child_index]
+                    if not is_linux: # psutil calculates children usage for us on linux. Otherwise we save the values ourselved
+                        children_cpu_times[child_index] = target_child_process.cpu_times()
+                    child_cpu_usage = target_child_process.cpu_percent()
                     cpu_percentage += child_cpu_usage
                 # Add children not already in our monitoring_process_children
                 else:
                     monitoring_process_children_set.add(child)
                     monitoring_process_children.append(child)
+                    children_cpu_times.append((0, 0, 0, 0)) # Placeholder; almost the same shape as psutil.pcputimes
 
             memory_max = max(memory_max, memory_usage)
 
@@ -242,7 +251,15 @@ def collect_time_series(shared_process_dict):
             cpu_percentages.append(cpu_percentage)
             memory_values.append(memory_usage)
 
+            had_permission = True
+
         except psutil.AccessDenied as access_denied_error:
+
+            # Same reasoning as usage in the collect_fixed_data function
+            if is_unix:
+                if had_permission:
+                    continue
+            
             print("Root access is needed for monitoring the target command.")
             raise access_denied_error
             break
@@ -252,6 +269,20 @@ def collect_time_series(shared_process_dict):
         except Exception as e:
             raise e
             break
+
+    # psutil calculates children usage for us on linux. Otherwise we calculate and pass it to the main thread.
+    if not is_linux:
+        children_user_cpu_time = 0
+        children_system_cpu_time = 0
+
+        for cpu_time in children_cpu_times:
+            children_user_cpu_time += cpu_time[0]
+            children_system_cpu_time += cpu_time[1]
+
+        print(children_user_cpu_time)
+
+        shared_process_dict["children_user_cpu_time"] = children_user_cpu_time
+        shared_process_dict["children_system_cpu_time"] = children_system_cpu_time
 
     shared_process_dict["memory_max"] = memory_max
     shared_process_dict["memory_perprocess_max"] = memory_perprocess_max
@@ -380,15 +411,26 @@ def single_benchmark_command_raw(command):
     cpu_percentages = shared_process_dict["cpu_percentages"]
     memory_values = shared_process_dict["memory_values"]
 
-
     # Calculate and store proper values for cpu and disk
     cpu_user_time = 0
     cpu_system_time = 0
 
+    # https://psutil.readthedocs.io/en/latest/#psutil.Process.cpu_times
     if(cpu_times is not None):
-        # https://psutil.readthedocs.io/en/latest/#psutil.Process.cpu_times
-        cpu_user_time = cpu_times.user + cpu_times.children_user
-        cpu_system_time = cpu_times.system + cpu_times.children_system
+        children_user_cpu_time, children_system_cpu_time = 0, 0
+
+        if(is_linux):
+            children_user_cpu_time = cpu_times.children_user
+            children_system_cpu_time = cpu_times.children_system
+            
+        else: # macOS and Windows where cpu_times always returns 0 for children's cpu usage
+            # Then we have calculated this info ourselves in other threads (collect_time_series, specifically)
+            # grab and use them
+            children_user_cpu_time = shared_process_dict["children_user_cpu_time"]
+            children_system_cpu_time = shared_process_dict["children_system_cpu_time"]
+
+        cpu_user_time = cpu_times.user + children_user_cpu_time
+        cpu_system_time = cpu_times.system + children_system_cpu_time
     
     cpu_total_time = cpu_user_time + cpu_system_time
 
