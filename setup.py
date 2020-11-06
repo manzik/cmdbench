@@ -27,7 +27,7 @@ setup(
         "matplotlib>=3.2.2"
     ],
     python_requires='>2.7,!=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*',
-    version='0.1.11',
+    version='0.1.12',
     download_url='https://pypi.org/project/cmdbench/',
     license='MIT',
     description='Quick and easy benchmarking for any command\'s CPU, memory, disk usage and runtime.',
@@ -62,7 +62,5 @@ setup(
 )
 
 if __name__ == '__main__':
-    if sys.platform == "darwin":
-        raise Exception('Sorry, cmdbench is supported only on the Linux operating system.\nIf you would like to use cmdbench on macOS, please create an issue at https://github.com/manzik/cmdbench/issues to request the feature.')
-    elif sys.platform == 'win32':
+    if sys.platform == 'win32':
         raise Exception('Sorry, cmdbench is supported only on the Linux operating system.\nIf you would like to use cmdbench on Windows, please create an issue at https://github.com/manzik/cmdbench/issues to request the feature.')
