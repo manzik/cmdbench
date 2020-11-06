@@ -39,7 +39,7 @@ setup(
             ]
         },
     classifiers=[
-        'Development Status :: 3 - Alpha',      # Chose either "3 - Alpha", "4 - Beta" or "5 - Production/Stable" as the current state of your package
+        'Development Status :: 4 - Beta',      # Chose either "3 - Alpha", "4 - Beta" or "5 - Production/Stable" as the current state of your package
         'Intended Audience :: Science/Research',
         'Intended Audience :: Developers',
         'Intended Audience :: End Users/Desktop',
@@ -49,6 +49,7 @@ setup(
         'Topic :: Utilities',
         'Operating System :: Unix',
         'Operating System :: POSIX',
+        'Operating System :: MacOS',
         'Operating System :: Microsoft :: Windows',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 2.7',
@@ -62,5 +63,5 @@ setup(
 )
 
 if __name__ == '__main__':
-    if sys.platform == 'win32':
-        raise Exception('Sorry, cmdbench is supported only on the Linux operating system.\nIf you would like to use cmdbench on Windows, please create an issue at https://github.com/manzik/cmdbench/issues to request the feature.')
+    # For system checks (and throw exceptions if not wupported). Empty as we now support all OSs.
+    pass

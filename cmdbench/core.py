@@ -5,11 +5,9 @@ import multiprocessing
 import threading
 import numpy as np
 import sys
-import io
 import os
 import subprocess
 import psutil
-import sys
 import tempfile
 import shlex
 from sys import platform as _platform
