@@ -79,34 +79,34 @@ def benchmark(command, iterations, **kwargs):
     # Print statistics if user did not tell us what info to print
     printing_any = False
     for option_key in option_keys:
-        if(kwargs[option_key]):
+        if kwargs[option_key]:
             printing_any = True
             break
     if not printing_any:
-        if(iterations > 1):
+        if iterations > 1:
             kwargs["print_statistics"] = True
         else:
             kwargs["print_first_iteration"] = True
     
-    if(kwargs["print_statistics"]):
+    if kwargs["print_statistics"]:
         print_benchmark_dict(benchmark_results.get_statistics(), "Statistics")
 
-    if(kwargs["print_averages"]):
+    if kwargs["print_averages"]:
         print_benchmark_dict(benchmark_results.get_averages(), "Averages")
 
-    if(kwargs["print_values"]):
+    if kwargs["print_values"]:
         print_benchmark_dict(benchmark_results.get_values_per_attribute(), "Values")
 
-    if(kwargs["print_first_iteration"]):
+    if kwargs["print_first_iteration"]:
         print_benchmark_dict(benchmark_results.get_first_iteration(), "First Iteration")
 
-    if(kwargs["print_all_iterations"]):
+    if kwargs["print_all_iterations"]:
         click.secho("====> %s <====\n" % "All Iterations", fg="green")
         for ind, iteration in enumerate(benchmark_results.iterations):
             print_benchmark_dict(BenchmarkDict.from_dict(iteration), "Iteration #%s" % (ind + 1), indentation = 4, title_fg_color="magenta")
 
     save_plot_value = kwargs["save_plot"]
-    if(save_plot_value is not None):
+    if save_plot_value is not None:
         save_plot_sizes = kwargs["save_plot_size"]
         save_plot_width = save_plot_sizes[0]
         save_plot_height = save_plot_sizes[1]
@@ -115,7 +115,7 @@ def benchmark(command, iterations, **kwargs):
         fig.savefig(save_plot_value)
 
     save_json_value = kwargs["save_json"]
-    if(save_json_value is not None):
+    if save_json_value is not None:
         json.dump(benchmark_results.iterations, save_json_value, cls=NumpyEncoder)
 
     click.echo("Done.")
@@ -128,7 +128,7 @@ key_print_order = ["process", "cpu", "memory", "disk", "time_series"]
 def print_benchmark_dict_to_readable(bdict, indentation = 0):
     
     remaining_keys = list(bdict.keys())
-    while(len(remaining_keys) != 0):
+    while len(remaining_keys) != 0:
         # START: Figure out if the key is in the list of keys to be printed in a certain order
         found_priority = False
         target_key = remaining_keys[0]
@@ -151,10 +151,9 @@ def print_benchmark_dict_to_readable(bdict, indentation = 0):
         unit_str = "" if key_readables_values is None or len(key_readables_values) < 2 else key_readables_values[1]
 
         is_bdict = isinstance(value, BenchmarkDict)
-        unit_comes_before = is_bdict
 
         val_is_bdict = isinstance(value, BenchmarkDict)
-        if(val_is_bdict):
+        if val_is_bdict:
             unit_str_final = (" (%s)" % unit_str if len(unit_str) > 0 else "")
 
             indent_line(indentation)
@@ -168,7 +167,7 @@ def print_benchmark_dict_to_readable(bdict, indentation = 0):
             indent_line(indentation)
             click.secho(key_formatted, fg = "cyan", nl = False)
             final_value = None
-            if(isinstance(value, numbers.Number)):
+            if isinstance(value, numbers.Number):
                 final_value = str(round(value, PRINTING_PRECISION))
             else:
                 final_value = value.__repr__()

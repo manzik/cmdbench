@@ -21,6 +21,7 @@ Python compatibility: 2.7 or >=3.4
       * [BenchmarkResults: Class](#benchmarkresults-class)
       * [BenchmarkDict: Class](#benchmarkdict-classdefaultdict)
    * [Notes](#notes)
+      * [macOS](#macos)
       * [Windows](#windows)
       
 # Quick Start: Command Line Interface
@@ -162,3 +163,6 @@ For a more comprehensive demonstration on how to use the library and the resourc
 
 ## Windows
 When benchmarking on windows, you will need to wrap your main code around the `if __name__ == '__main__':` statement.
+
+## MacOS
+MacOS does not allow process-specific disk usage information collection, therefore disk usage will not be reported on macos when you perform benchmarking.

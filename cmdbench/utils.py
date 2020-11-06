@@ -11,9 +11,9 @@ class BenchmarkDict(defaultdict):
         super(BenchmarkDict, self).__init__(BenchmarkDict)
 
     def __getattr__(self, key):
-        if key.startswith('_'):
+        if key.startswith("_"):
             raise AttributeError(key)
-        if(key in self.keys()):
+        if key in self.keys():
             return self[key]
         else:
             raise AttributeError(key)
@@ -28,7 +28,7 @@ class BenchmarkDict(defaultdict):
         outputDict = {}
         for key, value in self.items():
             attr_dict_pair_value = None
-            if(isinstance(value, BenchmarkDict)):
+            if isinstance(value, BenchmarkDict):
                 attr_dict_pair_value = value.to_dict()
             else:
                 attr_dict_pair_value = value
@@ -46,11 +46,11 @@ class BenchmarkDict(defaultdict):
     @staticmethod
     def get_dict_value_converted(value):
         attr_dict_pair_value = None
-        if(isinstance(value, dict)):
+        if isinstance(value, dict):
             attr_dict_pair_value = BenchmarkDict.from_dict(value)
-        elif(isinstance(value, BenchmarkDict)):
+        elif isinstance(value, BenchmarkDict):
             attr_dict_pair_value = BenchmarkDict.from_dict(value)
-        elif(isinstance(value, list)):
+        elif isinstance(value, list):
             newList = []
             for item in value:
                 newList.append(BenchmarkDict.get_dict_value_converted(item))
@@ -68,7 +68,7 @@ class BenchmarkStats:
         data = np.hstack(np.array(data))
 
         if type(data) is np.ndarray:
-            if(len(data) > 0):
+            if len(data) > 0:
                 mean_val = np.mean(data)
                 sd_val = np.std(data)
                 min_val = np.min(data)
@@ -118,9 +118,9 @@ def get_sec(time_str):
     secs = 0
     time_decimal = 0
     time_decimal_start_ind = -1
-    if("." in time_str):
+    if "." in time_str:
       time_decimal_start_ind = time_str.index(".")
-    if(time_decimal_start_ind > -1):
+    if time_decimal_start_ind > -1:
         time_decimal = float("0" + time_str[time_decimal_start_ind:])
     time_str = time_str[:time_decimal_start_ind]
 

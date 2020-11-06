@@ -12,13 +12,13 @@ import tempfile
 import shlex
 from sys import platform as _platform
 
-is_linux = _platform.startswith('linux')
+is_linux = _platform.startswith("linux")
 is_macos = _platform == "darwin"
 is_unix = is_linux or is_macos
-is_win = os.name == 'nt'
+is_win = os.name == "nt"
 
 def benchmark_command(command, iterations_num = 1, raw_data = False):
-    if(iterations_num <= 0):
+    if iterations_num <= 0:
         raise Exception("The number of iterations to run the command should be >= 1")
 
     raw_benchmark_results = []
@@ -31,7 +31,7 @@ def benchmark_command(command, iterations_num = 1, raw_data = False):
     return BenchmarkResults(final_benchmark_results)
 
 def benchmark_command_generator(command, iterations_num = 1, raw_data = False):
-    if(iterations_num <= 0):
+    if iterations_num <= 0:
         raise Exception("The number of iterations to run the command should be >= 1")
 
     for _ in range(iterations_num):
@@ -84,7 +84,7 @@ def raw_to_final_benchmark(benchmark_raw_dict):
         disk_total_bytes = disk_read_bytes + disk_write_bytes
 
         # Only available on linux
-        if(is_linux):
+        if is_linux:
             disk_read_chars = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["read_chars"]
             disk_write_chars = benchmark_raw_dict["psutil"]["disk"]["io_counters"]["write_chars"]
             disk_total_chars = disk_read_chars + disk_write_chars
@@ -119,8 +119,8 @@ def raw_to_final_benchmark(benchmark_raw_dict):
     return benchmark_results
 
 def collect_fixed_data(shared_process_dict):
-    while(shared_process_dict["target_process_pid"] == -1):
-        if(shared_process_dict["skip_benchmarking"]):
+    while shared_process_dict["target_process_pid"] == -1:
+        if shared_process_dict["skip_benchmarking"]:
             return
 
     p = psutil.Process(shared_process_dict["target_process_pid"])
@@ -135,9 +135,9 @@ def collect_fixed_data(shared_process_dict):
     disk_io_counters = None
 
     # While loop runs as long as the target command is running
-    while(True and not shared_process_dict["skip_benchmarking"]):
+    while not shared_process_dict["skip_benchmarking"]:
         # retcode would be None while subprocess is running
-        if(not p.is_running()):
+        if not p.is_running():
             break
         # https://psutil.readthedocs.io/en/latest/#psutil.Process.oneshot
         with p.oneshot():
@@ -181,8 +181,8 @@ def collect_fixed_data(shared_process_dict):
 
 def collect_time_series(shared_process_dict):
     
-    while(shared_process_dict["target_process_pid"] == -1):
-        if(shared_process_dict["skip_benchmarking"]):
+    while shared_process_dict["target_process_pid"] == -1:
+        if shared_process_dict["skip_benchmarking"]:
             return
 
     p = psutil.Process(shared_process_dict["target_process_pid"])
@@ -206,9 +206,9 @@ def collect_time_series(shared_process_dict):
     # For macOS and Windows. Will be used for final user and system cpu time calculation
     children_cpu_times = []
 
-    while(True):
+    while True:
         # retcode would be None while subprocess is running
-        if(not p.is_running()):
+        if not p.is_running():
             break
         
         try:
@@ -232,7 +232,7 @@ def collect_time_series(shared_process_dict):
                     memory_perprocess_max = max(memory_perprocess_max, child_memory_usage)
                     # We need to get cpu_percentage() only for children existing for at list one iteration
                     # Calculate CPU usage for children we have been monitoring
-                if(child in monitoring_process_children_set):
+                if child in monitoring_process_children_set:
                     child_index = monitoring_process_children.index(child)
                     target_child_process = monitoring_process_children[child_index]
                     if not is_linux: # psutil calculates children usage for us on linux. Otherwise we save the values ourselved
@@ -300,7 +300,7 @@ def single_benchmark_command_raw(command):
 
     if is_linux:
         # Preprocessing: Wrap the target command around the GNU Time command
-        time_tmp_output_file = tempfile.mkstemp(suffix = '.temp')[1] # [1] for getting temporary filename and not the file's stream
+        time_tmp_output_file = tempfile.mkstemp(suffix = ".temp")[1] # [1] for getting temporary filename and not the file's stream
         commands_list = ["/usr/bin/time", "-o", time_tmp_output_file, "-v"] + commands_list
 
     # START: Initialization
@@ -373,15 +373,15 @@ def single_benchmark_command_raw(command):
     # Depending on whether we are on linux or not
 
     # Wait for /usr/bin/time to start the target command
-    while(p is None and not shared_process_dict["skip_benchmarking"]):
+    while p is None and not shared_process_dict["skip_benchmarking"]:
 
         master_process_retcode = master_process.poll()
-        if(master_process_retcode != None or not master_process.is_running()):
+        if master_process_retcode != None or not master_process.is_running():
             shared_process_dict["skip_benchmarking"] = True
             break
 
         time_children = master_process.children(recursive=False)
-        if(len(time_children) > 0):
+        if len(time_children) > 0:
             p = time_children[0]
 
     shared_process_dict["execution_start"] = execution_start
@@ -416,10 +416,10 @@ def single_benchmark_command_raw(command):
     cpu_system_time = 0
 
     # https://psutil.readthedocs.io/en/latest/#psutil.Process.cpu_times
-    if(cpu_times is not None):
+    if cpu_times is not None:
         children_user_cpu_time, children_system_cpu_time = 0, 0
 
-        if(is_linux):
+        if is_linux:
             children_user_cpu_time = cpu_times.children_user
             children_system_cpu_time = cpu_times.children_system
             
@@ -438,7 +438,7 @@ def single_benchmark_command_raw(command):
     psutil_read_count, psutil_write_count = 0, 0
     psutil_read_chars, psutil_write_chars = 0, 0
 
-    if(disk_io_counters is not None):
+    if disk_io_counters is not None:
         psutil_read_bytes = disk_io_counters.read_bytes
         psutil_write_bytes = disk_io_counters.write_bytes
         psutil_read_count = disk_io_counters.read_count
@@ -456,14 +456,14 @@ def single_benchmark_command_raw(command):
     memory_values = np.array(memory_values)
 
     # Collect info from GNU Time if it's linux
-    if(is_linux):
+    if is_linux:
         # Read GNU Time command's output and parse it into a python dictionary
         f = open(time_tmp_output_file, "r")
         gnu_times_lines = list(map(lambda line: line.strip(), f.readlines()))
         gnu_times_dict = {}
         for gnu_times_line in gnu_times_lines:
             tokens = list(map(lambda token: token.strip(), gnu_times_line.rsplit(": ", 1)))
-            if(len(tokens) < 2):
+            if len(tokens) < 2:
                 continue
             key = tokens[0]
             value = tokens[1].replace("?", "0")
@@ -481,37 +481,37 @@ def single_benchmark_command_raw(command):
 
         # Convert all gnu time output's int values to int and float values to float
         for key, value in gnu_times_dict.items():
-            if(isint(value)):
+            if isint(value):
                 gnu_times_dict[key] = int(value)
-            elif(isfloat(value)):
+            elif isfloat(value):
                 gnu_times_dict[key] = float(value)
     
     # GNU Time output: For reference
     
     # {
-    #   'Average resident set size (kbytes)': 0,
-    #   'Average shared text size (kbytes)': 0,
-    #   'Average stack size (kbytes)': 0,
-    #   'Average total size (kbytes)': 0,
-    #   'Average unshared data size (kbytes)': 0,
-    #   'Command being timed': '"node --expose-gc test.js"',
-    #   'Elapsed (wall clock) time (h:mm:ss or m:ss)': 5.74,
-    #   'Exit status': 0,
-    #   'File system inputs': 0,
-    #   'File system outputs': 10240,
-    #   'Involuntary context switches': 91,
-    #   'Major (requiring I/O) page faults': 0,
-    #   'Maximum resident set size (kbytes)': 614304,
-    #   'Minor (reclaiming a frame) page faults': 740886,
-    #   'Page size (bytes)': 4096,
-    #   'Percent of CPU this job got': 178,
-    #   'Signals delivered': 0,
-    #   'Socket messages received': 0,
-    #   'Socket messages sent': 0,
-    #   'Swaps': 0,
-    #   'System time (seconds)': 0.76,
-    #   'User time (seconds)': 9.47,
-    #   'Voluntary context switches': 7585,
+    #   "Average resident set size (kbytes)": 0,
+    #   "Average shared text size (kbytes)": 0,
+    #   "Average stack size (kbytes)": 0,
+    #   "Average total size (kbytes)": 0,
+    #   "Average unshared data size (kbytes)": 0,
+    #   "Command being timed": ""node --expose-gc test.js"",
+    #   "Elapsed (wall clock) time (h:mm:ss or m:ss)": 5.74,
+    #   "Exit status": 0,
+    #   "File system inputs": 0,
+    #   "File system outputs": 10240,
+    #   "Involuntary context switches": 91,
+    #   "Major (requiring I/O) page faults": 0,
+    #   "Maximum resident set size (kbytes)": 614304,
+    #   "Minor (reclaiming a frame) page faults": 740886,
+    #   "Page size (bytes)": 4096,
+    #   "Percent of CPU this job got": 178,
+    #   "Signals delivered": 0,
+    #   "Socket messages received": 0,
+    #   "Socket messages sent": 0,
+    #   "Swaps": 0,
+    #   "System time (seconds)": 0.76,
+    #   "User time (seconds)": 9.47,
+    #   "Voluntary context switches": 7585,
     # }
     
     

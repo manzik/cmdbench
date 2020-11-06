@@ -35,7 +35,7 @@ class BenchmarkResults():
     # Example: BenchmarkResults([{"x": 2}, {"x": 3}], None).get_values_per_attribute() == {"x": [2, 3]}
     def _get_values_per_attribute(self, list_of_objects, replace_func = None, key_path = []):
         sample_from_list = list_of_objects[0]
-        if(isinstance(sample_from_list, dict)):
+        if isinstance(sample_from_list, dict):
             value_per_attribute_dict = {}
             for key, value in sample_from_list.items():
                 list_of_objects_from_key = list(map(lambda parent_dict: parent_dict[key], list_of_objects))
@@ -43,7 +43,7 @@ class BenchmarkResults():
             return value_per_attribute_dict
         else:
             values_list = list_of_objects
-            if(replace_func is not None and isfunction(replace_func)):
+            if replace_func is not None and isfunction(replace_func):
                 values_list = replace_func(values_list, key_path)
             return values_list
 
@@ -51,7 +51,7 @@ class BenchmarkResults():
 
         def stats_replace_func(list_of_objects, key_path):
             sample_data = list_of_objects[0]
-            if(isinstance(sample_data, str)):
+            if isinstance(sample_data, str):
                 return None
             else:
                 return BenchmarkStats(list_of_objects)
@@ -65,9 +65,9 @@ class BenchmarkResults():
 
         def avg_replace_func(list_of_objects, key_path):
             sample_data = list_of_objects[0]
-            if(isinstance(sample_data, str)):
+            if isinstance(sample_data, str):
                 return None
-            elif(key_path[0] == time_series_dict_key):
+            elif key_path[0] == time_series_dict_key:
                 return list_of_objects
             else:
                 return np.hstack(np.array(list_of_objects)).mean()
@@ -86,7 +86,7 @@ class BenchmarkResults():
         time_series_x_values_out = []
         time_series_y_values_out = {}
         for key, value in  value_per_attribute_avgs_dict["time_series"].items():
-            if(key != "sample_milliseconds"):
+            if key != "sample_milliseconds":
                 time_series_y_values[key] = value
                 time_series_y_values_out[key] = []
 
@@ -118,14 +118,14 @@ class BenchmarkResults():
             # range of milliseconds trying to calculate the average for
             for avging_index_ind in range(time_series_data_count):
                 target_time_series_x = time_series_x_values[avging_index_ind]
-                while(scanning_time_indexes[avging_index_ind] < len(target_time_series_x) and target_time_series_x[scanning_time_indexes[avging_index_ind]] <= to_ms):
+                while scanning_time_indexes[avging_index_ind] < len(target_time_series_x) and target_time_series_x[scanning_time_indexes[avging_index_ind]] <= to_ms:
                     avging_indexes_list[avging_index_ind].append(scanning_time_indexes[avging_index_ind])
                     scanning_time_indexes[avging_index_ind] += 1
 
             flattened_indexes = np.hstack(np.array(avging_indexes_list))
             matching_range_indexes_count = len(flattened_indexes)
             no_indexes_for_time_range = matching_range_indexes_count == 0
-            if(no_indexes_for_time_range):
+            if no_indexes_for_time_range:
                 continue
             
             # Calculate average of x values for matching indexes in the range
@@ -162,11 +162,11 @@ class BenchmarkResults():
         return BenchmarkDict.from_dict(value_per_attribute_avgs_dict)
 
     def get_resources_plot(self, width = 15, height = 3):
-        if(not matplotlib_available):
+        if not matplotlib_available:
             raise Exception("You need to install matplotlib before using this method")
 
         time_series_obj = None
-        if(self._has_one_iteration()):
+        if self._has_one_iteration():
             time_series_obj = self.get_first_iteration()
         else:
             time_series_obj = self.get_averages()
@@ -190,6 +190,7 @@ class BenchmarkResults():
         cpu_y = results_cpu_percentages
 
         # START: Rescale memory_y data to proper file size.
+        
         memory_y = memory_y.copy().astype("float")
         max_val = max(memory_y)
         scales = ["Bytes", "KB", "MB", "GB", "TB", "PB"]
@@ -200,20 +201,20 @@ class BenchmarkResults():
         # END:  Rescale memory_y data to proper file size.
 
 
-        color = 'tab:blue'
+        color = "tab:blue"
         fig, ax_memory = plt.subplots()
         ax_memory.grid()
-        ax_memory.set_xlabel('Milliseconds')
+        ax_memory.set_xlabel("Milliseconds")
         ax_memory.set_ylabel("Memory (%s)" % scales[bit_logs], color=color)
         ax_memory.plot(x, memory_y, color=color, alpha=0.8)
-        ax_memory.tick_params(axis='y', labelcolor=color)
+        ax_memory.tick_params(axis="y", labelcolor=color)
         plt.fill_between(x, memory_y, alpha=0.2, color=color)
 
-        color = 'tab:green'
+        color = "tab:green"
         ax_cpu = ax_memory.twinx()
-        ax_cpu.set_ylabel('CPU (%)', color=color)
+        ax_cpu.set_ylabel("CPU (%)", color=color)
         ax_cpu.plot(x, cpu_y, color=color, alpha=0.75, linewidth=1)
-        ax_cpu.tick_params(axis='y', labelcolor=color)
+        ax_cpu.tick_params(axis="y", labelcolor=color)
         #plt.fill_between(x, cpu_y, alpha=0.2, color=color)
 
         #plt.tight_layout()
