@@ -1,2 +1,4 @@
 tests/* linguist-vendored
 bioinformatics/* linguist-vendored
+*.ipynb linguist-language=Jupyter-Notebook
+*.ipynb linguist-vendored
