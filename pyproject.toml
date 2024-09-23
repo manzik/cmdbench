@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cmdbench"
-version = "0.1.18"
+version = "0.1.19"
 description = "Quick and easy benchmarking for any command's CPU, memory, disk usage and runtime."
 authors = ["Mohsen Yousefian <contact@manzik.com>"]
 license = "MIT"
