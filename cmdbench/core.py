@@ -197,7 +197,6 @@ def collect_time_series(shared_process_dict):
     except psutil.NoSuchProcess:
         # The process might have already ended
         shared_process_dict["skip_benchmarking"] = True
-        click.secho(f"Warning: The process ended before cmdbench could start monitoring it.", fg = "yellow")
         return
     execution_start = shared_process_dict["execution_start"]
     sample_milliseconds = shared_process_dict["sample_milliseconds"]
