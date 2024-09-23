@@ -22,13 +22,13 @@ classifiers = [
     "Operating System :: MacOS",
     "Operating System :: Microsoft :: Windows",
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 2.7",
-    "Programming Language :: Python :: 3.4",
-    "Programming Language :: Python :: 3.5",
     "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 packages = [{include = "cmdbench"}]
 
@@ -41,6 +41,7 @@ Click = "*"
 tqdm = "*"
 colorama = "*"
 matplotlib = ">=3.3.3"
+scipy = ">=1.5.0"
 
 [tool.poetry.scripts]
 cmdbench = "cmdbench.cli:benchmark"
