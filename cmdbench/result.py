@@ -1,5 +1,6 @@
 from .utils import *
 from inspect import isfunction
+from scipy.interpolate import interp1d
 import math
 
 matplotlib_available = True
@@ -60,7 +61,6 @@ class BenchmarkResults():
         return BenchmarkDict.from_dict(value_per_attribute_stats_dict)
 
     def get_averages(self):
-
         time_series_dict_key = "time_series"
 
         def avg_replace_func(list_of_objects, key_path):
@@ -70,96 +70,51 @@ class BenchmarkResults():
             elif key_path[0] == time_series_dict_key:
                 return list_of_objects
             else:
-                return np.hstack(np.array(list_of_objects)).mean()
+                return np.mean(list_of_objects)
         
         value_per_attribute_avgs_dict = self._get_values_per_attribute(self.iterations, avg_replace_func)
         
         # Break down time series data to time_series_x_values and time_series_y_values
         averaged_time_series = {}
-        # A list of list of x values (in this case, milliseconds) to calculate y averages against
         time_series_x_values = value_per_attribute_avgs_dict["time_series"]["sample_milliseconds"]
-        
-        # Dict of list of possible y lists for each kind of resource (cpu percentages, memory values)
         time_series_y_values = {}
-        
-        # Output (updated 1D average) values
-        time_series_x_values_out = []
-        time_series_y_values_out = {}
-        for key, value in  value_per_attribute_avgs_dict["time_series"].items():
+
+        for key, value in value_per_attribute_avgs_dict["time_series"].items():
             if key != "sample_milliseconds":
                 time_series_y_values[key] = value
-                time_series_y_values_out[key] = []
 
-
-        # START: Average of the time series algorithm
-
-        time_series_np = np.hstack(np.array(time_series_x_values))
-        sample_min_ms = time_series_np.min()
-        sample_max_ms = time_series_np.max()
+        # Use the min and max values of time to create a uniform grid
+        min_time = max([min(ts) for ts in time_series_x_values])
+        max_time = min([max(ts) for ts in time_series_x_values])
         
-        samples_time_avg_max = np.array([np.array(time_series_x).max() for time_series_x in time_series_x_values]).mean()
-        samples_time_avg_min = np.array([np.array(time_series_x).min() for time_series_x in time_series_x_values]).mean()
-        samples_time_avg = samples_time_avg_max - samples_time_avg_min
-        samples_len_avg = np.array([len(time_series_x) for time_series_x in time_series_x_values]).mean()
+        # Define a common time grid (uniform x values)
+        uniform_time_grid = np.linspace(min_time, max_time, num=500)
+        
+        time_series_y_values_out = {key: np.zeros_like(uniform_time_grid) for key in time_series_y_values}
 
-        # Average milliseconds per sample
-        avg_ms_per_sample = samples_time_avg / samples_len_avg
-
-        # Average y values based on each range for x values
-        # ranges' length are average milliseconds among x values we have
-        time_series_data_count = len(time_series_x_values)
-        scanning_time_indexes = [0] * time_series_data_count
-        for from_ms in np.arange(sample_min_ms, sample_max_ms, avg_ms_per_sample):
-            to_ms = from_ms + avg_ms_per_sample
+        # Iterate over each time series and interpolate it on the uniform grid
+        for i in range(len(time_series_x_values)):
+            x_vals = time_series_x_values[i]
             
-            avging_indexes_list = [[] for _ in range(time_series_data_count)]
+            for key in time_series_y_values.keys():
+                y_vals = time_series_y_values[key][i]
+                f_interp = interp1d(x_vals, y_vals, bounds_error=False, fill_value="extrapolate")
+                interpolated_y = f_interp(uniform_time_grid)
+                time_series_y_values_out[key] += interpolated_y
 
-            # Find list of indexes for each iteration of benchmarking that match the current
-            # range of milliseconds trying to calculate the average for
-            for avging_index_ind in range(time_series_data_count):
-                target_time_series_x = time_series_x_values[avging_index_ind]
-                while scanning_time_indexes[avging_index_ind] < len(target_time_series_x) and target_time_series_x[scanning_time_indexes[avging_index_ind]] <= to_ms:
-                    avging_indexes_list[avging_index_ind].append(scanning_time_indexes[avging_index_ind])
-                    scanning_time_indexes[avging_index_ind] += 1
+        # Compute the average by dividing by the number of time series
+        for key in time_series_y_values_out.keys():
+            time_series_y_values_out[key] /= len(time_series_x_values)
 
-            flattened_indexes = np.hstack(np.array(avging_indexes_list))
-            matching_range_indexes_count = len(flattened_indexes)
-            no_indexes_for_time_range = matching_range_indexes_count == 0
-            if no_indexes_for_time_range:
-                continue
-            
-            # Calculate average of x values for matching indexes in the range
-            avg_x = 0 # i.e. average milliseconds
-            for avging_index_ind in range(time_series_data_count):
-                avging_indexes = avging_indexes_list[avging_index_ind]
-                for avging_index in avging_indexes:
-                    avg_x += time_series_x_values[avging_index_ind][avging_index]
-            avg_x /= matching_range_indexes_count
-            time_series_x_values_out.append(avg_x)
+        # Pack data into averaged_time_series
+        averaged_time_series["sample_milliseconds"] = uniform_time_grid
+        for key, value in time_series_y_values_out.items():
+            averaged_time_series[key] = value
 
-            # Calculate average of y values of each key for matching indexes in the range
-            for key_y in time_series_y_values.keys():
-                # Y value for this key. Iterates through all keys and changes for each iteration
-                avg_key_y = 0
-                for avging_index_ind in range(time_series_data_count):
-                    avging_indexes = avging_indexes_list[avging_index_ind]
-                    for avging_index in avging_indexes:
-                        avg_key_y += time_series_y_values[key_y][avging_index_ind][avging_index]
-                avg_key_y /= matching_range_indexes_count
-
-                time_series_y_values_out[key_y].append(avg_key_y)
-
-
-        # END: Average of the time series algorithm
-
-        # Pack data from time_series_x_values and time_series_y_values to averaged_time_series
-        # and finally time_series data
-        averaged_time_series["sample_milliseconds"] = np.array(time_series_x_values_out)
-        for key, value in  time_series_y_values_out.items():
-            averaged_time_series[key] = np.array(value)
         value_per_attribute_avgs_dict["time_series"] = averaged_time_series
 
         return BenchmarkDict.from_dict(value_per_attribute_avgs_dict)
+
 
     def get_resources_plot(self, width = 15, height = 3):
         if not matplotlib_available:

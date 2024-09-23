@@ -28,11 +28,11 @@ Python compatibility: 2.7 or >=3.4
 You can use the CLI provided by the python package to benchmark any command.  
 In the following demo, the command `node test.js` (a slightly modified version of [test.js](test.js)) is being benchmarked 10 times, average of resources are being printed and a plot for the command's cpu and memory usage is being saved to the file `plot.png`.  
 
-[![Usage demo](https://github.com/manzik/cmdbench/raw/master/resources/cmdbench.svg?sanitize=true)](https://asciinema.org/a/25Juo57eeSrNVJPa7rJiokW78)  
+[![Usage demo](https://github.com/manzik/cmdbench/raw/main/resources/cmdbench.svg?sanitize=true)](https://asciinema.org/a/25Juo57eeSrNVJPa7rJiokW78)  
 
 The output plot file `plot.png` for the demo will look like:  
 
-![Resources plot](https://github.com/manzik/cmdbench/raw/master/resources/plot.png)  
+![Resources plot](https://github.com/manzik/cmdbench/raw/main/resources/plot.png)  
 
 # Quick Start: Library  
 

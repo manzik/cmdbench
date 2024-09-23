@@ -10,6 +10,7 @@ import subprocess
 import psutil
 import tempfile
 import shlex
+import click
 from sys import platform as _platform
 
 is_linux = _platform.startswith("linux")
@@ -123,7 +124,13 @@ def collect_fixed_data(shared_process_dict):
         if shared_process_dict["skip_benchmarking"]:
             return
 
-    p = psutil.Process(shared_process_dict["target_process_pid"])
+    try:
+        p = psutil.Process(shared_process_dict["target_process_pid"])
+    except psutil.NoSuchProcess:
+        # The process might have already ended
+        shared_process_dict["skip_benchmarking"] = True
+        click.secho(f"Warning: The process ended before cmdbench could start monitoring it.", fg = "yellow")
+        return
 
     # If we were able to access the process info at least once without access denied error
     had_permission = False
@@ -185,7 +192,13 @@ def collect_time_series(shared_process_dict):
         if shared_process_dict["skip_benchmarking"]:
             return
 
-    p = psutil.Process(shared_process_dict["target_process_pid"])
+    try:
+        p = psutil.Process(shared_process_dict["target_process_pid"])
+    except psutil.NoSuchProcess:
+        # The process might have already ended
+        shared_process_dict["skip_benchmarking"] = True
+        click.secho(f"Warning: The process ended before cmdbench could start monitoring it.", fg = "yellow")
+        return
     execution_start = shared_process_dict["execution_start"]
     sample_milliseconds = shared_process_dict["sample_milliseconds"]
     cpu_percentages = shared_process_dict["cpu_percentages"]
