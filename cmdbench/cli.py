@@ -5,14 +5,18 @@ from cmdbench.keys_dict import key_readables
 from tqdm import tqdm
 import numbers
 import numpy as np
-import pkg_resources
 import click
-import time
 import json
+import sys
+
+if sys.version_info >= (3, 8):
+    from importlib.metadata import version
+else:
+    from pkg_resources import get_distribution as version
 
 PRINTING_PRECISION = 3
 
-__version__ = pkg_resources.require("cmdbench")[0].version
+__version__ = version("cmdbench")
 @click.version_option(__version__)
 
 @click.option("--print-averages", "-a", default = False, is_flag = True, show_default=True,
