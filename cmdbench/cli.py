@@ -117,6 +117,7 @@ def benchmark(command, iterations, **kwargs):
 
         fig = benchmark_results.get_resources_plot(save_plot_width, save_plot_height)
         fig.savefig(save_plot_value)
+        click.echo("Plot saved.")
 
     save_json_value = kwargs["save_json"]
     if save_json_value is not None:
