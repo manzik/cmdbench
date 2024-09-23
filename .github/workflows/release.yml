@@ -1,11 +1,12 @@
 name: release
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
-
 jobs:
   release:
-    if: github.ref == 'refs/heads/main'
     environment:
       name: pypi
       url: https://pypi.org/p/autonote
