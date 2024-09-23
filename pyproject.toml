@@ -1,0 +1,50 @@
+[tool.poetry]
+name = "cmdbench"
+version = "0.1.14"
+description = "Quick and easy benchmarking for any command's CPU, memory, disk usage and runtime."
+authors = ["Mohsen Yousefian <contact@manzik.com>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/manzik/cmdbench"
+repository = "https://github.com/manzik/cmdbench"
+keywords = ["benchmarks", "benchmark", "benchmarking", "profiler", "profiling", "timeit", "time", "runtime", "performance", "monitoring", "monitor", "cpu", "memory", "ram", "disk"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Information Technology",
+    "Topic :: Software Development :: Testing",
+    "Topic :: System :: Benchmark",
+    "Topic :: Utilities",
+    "Operating System :: Unix",
+    "Operating System :: POSIX",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 2.7",
+    "Programming Language :: Python :: 3.4",
+    "Programming Language :: Python :: 3.5",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+]
+packages = [{include = "cmdbench"}]
+
+[tool.poetry.dependencies]
+python = ">2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*"
+numpy = "*"
+psutil = ">=5.7.0"
+beeprint = ">=2.4.10"
+Click = "*"
+tqdm = "*"
+colorama = "*"
+matplotlib = ">=3.2.2"
+
+[tool.poetry.scripts]
+cmdbench = "cmdbench.cli:benchmark"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
