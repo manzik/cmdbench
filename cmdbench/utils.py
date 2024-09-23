@@ -65,7 +65,7 @@ class BenchmarkStats:
         mean_val = sd_val = min_val = max_val = None
         
         # Convert to numpy array and flatten
-        data = np.hstack(np.array(data))
+        data = np.array(data).flatten()
 
         if type(data) is np.ndarray:
             if len(data) > 0:

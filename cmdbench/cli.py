@@ -116,8 +116,11 @@ def benchmark(command, iterations, **kwargs):
         save_plot_height = save_plot_sizes[1]
 
         fig = benchmark_results.get_resources_plot(save_plot_width, save_plot_height)
-        fig.savefig(save_plot_value)
-        click.echo("Plot saved.")
+        if fig:
+            fig.savefig(save_plot_value)
+            click.echo("Plot saved.")
+        else:
+            click.echo("No time series data to plot.")
 
     save_json_value = kwargs["save_json"]
     if save_json_value is not None:

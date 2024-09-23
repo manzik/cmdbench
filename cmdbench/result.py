@@ -70,7 +70,7 @@ class BenchmarkResults():
             elif key_path[0] == time_series_dict_key:
                 return list_of_objects
             else:
-                return np.mean(list_of_objects)
+                return np.mean(np.array(list_of_objects).flatten())
         
         value_per_attribute_avgs_dict = self._get_values_per_attribute(self.iterations, avg_replace_func)
         
@@ -83,12 +83,15 @@ class BenchmarkResults():
             if key != "sample_milliseconds":
                 time_series_y_values[key] = value
 
+        if len(time_series_x_values) == 0 or len(time_series_x_values[0]) == 0:
+            return BenchmarkDict.from_dict(value_per_attribute_avgs_dict)
+
         # Use the min and max values of time to create a uniform grid
         min_time = max([min(ts) for ts in time_series_x_values])
         max_time = min([max(ts) for ts in time_series_x_values])
         
         # Define a common time grid (uniform x values)
-        uniform_time_grid = np.linspace(min_time, max_time, num=500)
+        uniform_time_grid = np.linspace(min_time, max_time, num=max_time - min_time + 1)
         
         time_series_y_values_out = {key: np.zeros_like(uniform_time_grid) for key in time_series_y_values}
 
@@ -145,6 +148,12 @@ class BenchmarkResults():
         cpu_y = results_cpu_percentages
 
         # START: Rescale memory_y data to proper file size.
+
+        if isinstance(memory_y, list): # I know this is bad practice, but I don't have time to refactor this at the moment.
+            memory_y = np.array(memory_y)
+
+        if memory_y.flatten().size == 0:
+            return None
         
         memory_y = memory_y.copy().astype("float")
         max_val = max(memory_y)
