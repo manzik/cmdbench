@@ -35,7 +35,7 @@ jobs:
     - name: Check if version exists
       id: check_version
       run: |
-        VERSION=$(python setup.py --version)
+        VERSION=$(grep -m1 version pyproject.toml | cut -d'"' -f2)
         if pip install cmdbench==$VERSION; then
           echo "Version $VERSION already exists on PyPI"
           echo "skip_upload=true" >> $GITHUB_OUTPUT
