@@ -1,3 +1,5 @@
+[![Deployment](https://github.com/manzik/cmdbench/actions/workflows/release.yml/badge.svg)](https://github.com/manzik/cmdbench/actions/workflows/release.yml)
+
 # CMDBench
 A quick and easy benchmarking tool for any command's CPU, memory and disk usage.  
 CLI and the library functionalities are both provided.  
