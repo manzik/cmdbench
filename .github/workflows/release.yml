@@ -1,4 +1,4 @@
-name: release
+name: PyPI Release
 
 on:
   push:
@@ -32,5 +32,18 @@ jobs:
     - name: Build package
       run: python -m build
 
+    - name: Check if version exists
+      id: check_version
+      run: |
+        VERSION=$(python setup.py --version)
+        if pip install cmdbench==$VERSION; then
+          echo "Version $VERSION already exists on PyPI"
+          echo "skip_upload=true" >> $GITHUB_OUTPUT
+        else
+          echo "Version $VERSION does not exist on PyPI"
+          echo "skip_upload=false" >> $GITHUB_OUTPUT
+        fi
+
     - name: Publish package distributions to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
+      if: steps.check_version.outputs.skip_upload == 'false'
