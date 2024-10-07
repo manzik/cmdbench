@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cmdbench"
-version = "0.1.20"
+version = "0.1.21"
 description = "Quick and easy benchmarking for any command's CPU, memory, disk usage and runtime."
 authors = ["Mohsen Yousefian <contact@manzik.com>"]
 license = "MIT"
@@ -29,6 +29,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 packages = [{include = "cmdbench"}]
 

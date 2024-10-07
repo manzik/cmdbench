@@ -274,13 +274,11 @@ def collect_time_series(shared_process_dict):
             
             print("Root access is needed for monitoring the target command.")
             raise access_denied_error
-            break
         except psutil.NoSuchProcess as e:
             # The process might end while we are measuring resources
             pass
         except Exception as e:
             raise e
-            break
 
     # psutil calculates children usage for us on linux. Otherwise we calculate and pass it to the main thread.
     if not is_linux:
@@ -290,8 +288,6 @@ def collect_time_series(shared_process_dict):
         for cpu_time in children_cpu_times:
             children_user_cpu_time += cpu_time[0]
             children_system_cpu_time += cpu_time[1]
-
-        print(children_user_cpu_time)
 
         shared_process_dict["children_user_cpu_time"] = children_user_cpu_time
         shared_process_dict["children_system_cpu_time"] = children_system_cpu_time
@@ -322,9 +318,6 @@ def single_benchmark_command_raw(command):
     
     # Disk
     disk_io_counters = None
-
-    # Program outputs
-    process_output_lines, process_error_lines = [], []
 
     # Time series data
     # We don't need fast read access, we need fast insertion so we use deque
