@@ -63,9 +63,9 @@ class BenchmarkDict(defaultdict):
 class BenchmarkStats:
     def __init__(self, data):
         mean_val = sd_val = min_val = max_val = None
-        
+
         # Convert to numpy array and flatten
-        data = np.array(data).flatten()
+        data = self.__flatten_to_array(data)
 
         if type(data) is np.ndarray:
             if len(data) > 0:
@@ -76,6 +76,18 @@ class BenchmarkStats:
         
         self.data = data
         self.mean, self.stdev, self.min, self.max = mean_val, sd_val, min_val, max_val
+    
+    def __flatten_to_array(self, items):
+        flat_list = []
+        for item in items:
+            if isinstance(item, np.ndarray):
+                flat_list.extend(item.flatten())
+            elif isinstance(item, (list, tuple)):
+                flat_list.extend(self.__flatten_to_array(item))
+            else:
+                flat_list.append(item)
+        return np.array(flat_list)
+
     def __repr__(self):
         return "(mean: %(mean)s, stdev: %(stdev)s, min: %(min)s, max: %(max)s)" % {
             "mean": self.mean, "stdev": self.stdev,
