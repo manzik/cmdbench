@@ -60,6 +60,9 @@ class BenchmarkResults():
         value_per_attribute_stats_dict = self._get_values_per_attribute(self.iterations, stats_replace_func)
         return BenchmarkDict.from_dict(value_per_attribute_stats_dict)
 
+    def get_points(self):
+        return self._get_values_per_attribute(self.iterations)['time_series'].get('points', [])
+
     def get_averages(self):
         time_series_dict_key = "time_series"
 
@@ -80,7 +83,7 @@ class BenchmarkResults():
         time_series_y_values = {}
 
         for key, value in value_per_attribute_avgs_dict["time_series"].items():
-            if key != "sample_milliseconds":
+            if key not in  ["sample_milliseconds", "points"]:
                 time_series_y_values[key] = value
 
         if len(time_series_x_values) == 0 or len(time_series_x_values[0]) == 0:
@@ -114,12 +117,14 @@ class BenchmarkResults():
         for key, value in time_series_y_values_out.items():
             averaged_time_series[key] = value
 
+        # averaged_time_series['points'] = value_per_attribute_avgs_dict["time_series"]['points']
+
         value_per_attribute_avgs_dict["time_series"] = averaged_time_series
 
         return BenchmarkDict.from_dict(value_per_attribute_avgs_dict)
 
 
-    def get_resources_plot(self, width = 15, height = 3):
+    def get_resources_plot(self, width = 15, height = 3, capture_points=False):
         if not matplotlib_available:
             raise Exception("You need to install matplotlib before using this method")
 
@@ -128,6 +133,9 @@ class BenchmarkResults():
             time_series_obj = self.get_first_iteration()
         else:
             time_series_obj = self.get_averages()
+
+        if capture_points:
+            points = self.get_points()
         
         time_series_obj = time_series_obj["time_series"]
 
@@ -179,6 +187,15 @@ class BenchmarkResults():
         ax_cpu.set_ylabel("CPU (%)", color=color)
         ax_cpu.plot(x, cpu_y, color=color, alpha=0.75, linewidth=1)
         ax_cpu.tick_params(axis="y", labelcolor=color)
+        if capture_points:
+            for ind, point_list in enumerate(points):
+                color = COLORS[(ind+3)%len(COLORS)]
+                ylen = 1 / len(points)
+                ymin = ind*ylen
+                ymax = ymin+ylen
+                for point in point_list:
+                    if isinstance(point, float) or isinstance(point, int):
+                        ax_cpu.axvline(x=point, ymin=ymin, ymax=ymax,  linestyle="-", lw=1, alpha=0.2, color = color)
         #plt.fill_between(x, cpu_y, alpha=0.2, color=color)
 
         #plt.tight_layout()

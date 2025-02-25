@@ -2,7 +2,9 @@ import time
 from collections import defaultdict
 import numpy as np
 from beeprint import pp
+from matplotlib import pyplot as plt
 
+COLORS = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
 # https://stackoverflow.com/a/41274937
 # Allows attribute access through both obj["key"] (internal library convenience) and obj.key (external developer convenience)
@@ -94,8 +96,13 @@ class BenchmarkStats:
             "min": self.min, "max": self.max
         }
 
+class OutputCapture:
+    output_encoding = "utf-8"
+
+
 # https://stackoverflow.com/a/5998359
 current_milli_time = lambda: int(round(time.time() * 1000))
+current_nano_time = lambda: int(round(time.time_ns()))
 
 
 def iterable(obj):

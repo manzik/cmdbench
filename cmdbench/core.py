@@ -11,6 +11,7 @@ import psutil
 import tempfile
 import shlex
 import click
+import io
 from sys import platform as _platform
 
 is_linux = _platform.startswith("linux")
@@ -18,25 +19,25 @@ is_macos = _platform == "darwin"
 is_unix = is_linux or is_macos
 is_win = os.name == "nt"
 
-def benchmark_command(command, iterations_num = 1, raw_data = False):
+def benchmark_command(command, iterations_num = 1, raw_data = False, capture_items = []):
     if iterations_num <= 0:
         raise Exception("The number of iterations to run the command should be >= 1")
 
     raw_benchmark_results = []
     for _ in range(iterations_num):
-        raw_benchmark_result = single_benchmark_command_raw(command)
+        raw_benchmark_result = single_benchmark_command_raw(command, capture_items)
         raw_benchmark_results.append(raw_benchmark_result)
     
     final_benchmark_results = list(map(lambda raw_benchmark_result: raw_benchmark_result if raw_data else raw_to_final_benchmark(raw_benchmark_result), raw_benchmark_results))
 
     return BenchmarkResults(final_benchmark_results)
 
-def benchmark_command_generator(command, iterations_num = 1, raw_data = False):
+def benchmark_command_generator(command, iterations_num = 1, raw_data = False, capture_items = []):
     if iterations_num <= 0:
         raise Exception("The number of iterations to run the command should be >= 1")
 
     for _ in range(iterations_num):
-        raw_benchmark_result = single_benchmark_command_raw(command)
+        raw_benchmark_result = single_benchmark_command_raw(command, capture_items)
         final_benchmark_result = raw_benchmark_result if raw_data else raw_to_final_benchmark(raw_benchmark_result)
         yield BenchmarkResults([final_benchmark_result])
 
@@ -65,7 +66,7 @@ def raw_to_final_benchmark(benchmark_raw_dict):
 
     exit_code = benchmark_raw_dict["general"]["exit_code"]
 
-
+    points = benchmark_raw_dict["time_series"]["points"] if "points" in benchmark_raw_dict["time_series"] else []
 
     benchmark_results = {
         "process": { "stdout_data": process_stdout_data, "stderr_data": process_stderr_data, "execution_time": process_execution_time, "exit_code": exit_code },
@@ -75,7 +76,8 @@ def raw_to_final_benchmark(benchmark_raw_dict):
         {
             "sample_milliseconds": time_series_sample_milliseconds,
             "cpu_percentages": time_series_cpu_percentages,
-            "memory_bytes": time_series_memory_bytes
+            "memory_bytes": time_series_memory_bytes,
+            "points": points
         }
     }
     # psutil io_counters() is not available on macos
@@ -300,9 +302,11 @@ def collect_time_series(shared_process_dict):
     shared_process_dict["memory_values"] = memory_values 
 
 # Performs benchmarking on the command based on both /usr/bin/time and psutil library
-def single_benchmark_command_raw(command):
+def single_benchmark_command_raw(command, capture_items=set()):
     # https://docs.python.org/3/library/shlex.html#shlex.split
     commands_list = shlex.split(command)
+    # remove duplicates and convert to hash table 
+    capture_items = set(capture_items)
 
     time_tmp_output_file = None
 
@@ -315,6 +319,12 @@ def single_benchmark_command_raw(command):
 
     # CPU
     cpu_times = None
+
+    # POINTS
+    points = []
+    capture_points = "points" in capture_items
+    CMDBENCH_BYTE_STRING = str.encode("cmdbench", encoding=OutputCapture.output_encoding)
+    POINT_BYTE_STRING = str.encode("cmdbench point", encoding=OutputCapture.output_encoding)
     
     # Disk
     disk_io_counters = None
@@ -365,7 +375,10 @@ def single_benchmark_command_raw(command):
 
     # Finally, run the command
     # Master process could be GNU Time running target command or the target command itself
-    master_process = psutil.Popen(commands_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if not capture_items:
+        master_process = psutil.Popen(commands_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    else:
+        master_process = psutil.Popen(commands_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=1, text='r')
     execution_start = current_milli_time()
     
     # Only in linux, we target command will be GNU Time's child process
@@ -394,12 +407,35 @@ def single_benchmark_command_raw(command):
     if not shared_process_dict["skip_benchmarking"]:
         shared_process_dict["target_process_pid"] = p.pid
         
-    # Wait for process to finish (time_series_exec and fixed_data_exec will be processing it in parallel)
-    outdata, errdata = master_process.communicate()
-    outdata, errdata = outdata.decode(sys.stdout.encoding), errdata.decode(sys.stderr.encoding)
+    # Wait for process to finish (time_series_exec and fixed_data_exec will be processing it in parallel)    
+    if not capture_items:
+        outdata, errdata = master_process.communicate()
+        outdata, errdata = outdata.decode(sys.stdout.encoding), errdata.decode(sys.stderr.encoding)
+    else:
+        outdata=[]
+        errdata=[]
+        for line in master_process.stdout:
+            if not line:
+                break
+            if capture_points and line.startswith("cmdbench point"):
+                points.append(current_nano_time())
+            outdata.append(line)
+        
+        for line in (iter(master_process.stderr.readline,b'')):
+            if not line:
+                break
+            errdata.append(line)
+
     
     exection_end = current_milli_time()
     
+    # process points and err/out data outside to speed up code
+    if isinstance(outdata, list):
+        outdata = "\n".join([string for string in outdata])
+    if isinstance(errdata, list):
+        errdata = "\n".join([string for string in  errdata])
+    points = [round(point/1_000_000, 2)-execution_start for point in points]
+
     # Done with the master process, wait for the parallel (threads or processes) to finish up
     time_series_exec.join()
     fixed_data_exec.join()
@@ -550,7 +586,9 @@ def single_benchmark_command_raw(command):
         {
             "sample_milliseconds": np.array(sample_milliseconds),
             "cpu_percentages": np.array(cpu_percentages),
-            "memory_bytes": np.array(memory_values)
+            "memory_bytes": np.array(memory_values),
+            "points": points
+
         },
         
     }

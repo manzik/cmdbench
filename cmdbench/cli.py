@@ -36,6 +36,10 @@ __version__ = version("cmdbench")
     help="Width and height of the saving plot. Works if --save-plot is specified.")
 @click.option("--save-plot", "-p", default = None, type=click.File('wb'),
     help="File address to save a plot of the command's resource usage over time (CPU + Memory).")
+@click.option("--capture-points", "-c", default = False, is_flag = True, show_default=True,
+    help="Enables plotting delimiters when your program prints \"cmdbench point\\n\" and option "
+    "--save-plot enabled. Slows down execution speed. "
+    "NOTE: after each print you should flush the output buffer of your program (fflush(stdout) in C for example).") 
 
 @click.option("--iterations", "-i", default = 1, type = click.IntRange(1), show_default=True,
     help="Number of iterations to get benchmarking results for the target command.")
@@ -63,10 +67,11 @@ def benchmark(command, iterations, **kwargs):
        If no printing options are specified, statistics will be printed for more than 1 iterations, and the first iteration for only 1 iteration."""
 
     np.set_printoptions(threshold=15)
-
+    capture_items = []
+    capture_items.append('points') if kwargs.get('capture_points') else None
     click.echo("Benchmarking started..")
     benchmark_results = BenchmarkResults()
-    benchmark_generator = benchmark_command_generator(" ".join(command), iterations)
+    benchmark_generator = benchmark_command_generator(" ".join(command), iterations, capture_items = capture_items)
     t = tqdm(range(iterations))
     for i in t:
         benchmark_result = next(benchmark_generator)
@@ -78,7 +83,7 @@ def benchmark(command, iterations, **kwargs):
     click.echo("Benchmarking done.")
     click.echo()
 
-    option_keys = ["print_statistics", "print_averages", "print_values", "print_first_iteration", "print_all_iterations"]
+    option_keys = ["print_statistics", "print_averages", "print_values", "print_first_iteration", "print_all_iterations", "capture_points"]
 
     # Print statistics if user did not tell us what info to print
     printing_any = False
@@ -110,12 +115,13 @@ def benchmark(command, iterations, **kwargs):
             print_benchmark_dict(BenchmarkDict.from_dict(iteration), "Iteration #%s" % (ind + 1), indentation = 4, title_fg_color="magenta")
 
     save_plot_value = kwargs["save_plot"]
+    capture_points = kwargs["capture_points"]
     if save_plot_value is not None:
         save_plot_sizes = kwargs["save_plot_size"]
         save_plot_width = save_plot_sizes[0]
         save_plot_height = save_plot_sizes[1]
 
-        fig = benchmark_results.get_resources_plot(save_plot_width, save_plot_height)
+        fig = benchmark_results.get_resources_plot(save_plot_width, save_plot_height, capture_points)
         if fig:
             fig.savefig(save_plot_value)
             click.echo("Plot saved.")
